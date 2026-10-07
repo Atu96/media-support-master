@@ -605,3 +605,32 @@
 "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac." = "Mac의 하나의 타임라인에서 받아쓰기, 번역, 자막 편집, 더빙을 할 수 있습니다.";
 "Thích ứng dụng này?" = "앱이 도움이 되었나요?";
 "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!" = "앱이 시간을 절약하는 데 도움이 되었다면 Ko-fi에서 개발을 후원할 수 있습니다. 후원은 선택 사항입니다. 이용해 주셔서 감사합니다!";
+
+/* Integrated tools */
+"Công cụ tích hợp" = "내장 도구";
+"Mẫu Final Cut và cập nhật công cụ" = "Final Cut 템플릿 및 도구 업데이트";
+"XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng." = "XML 내보내기, 스크립트 정렬 및 언어 감지는 앱에 포함된 도구를 사용합니다.";
+"Tự cập nhật công cụ khi ứng dụng rảnh" = "앱이 대기 중일 때 도구 자동 업데이트";
+"Kiểm tra cập nhật" = "업데이트 확인";
+"Phục hồi công cụ trước đó" = "이전 도구 복원";
+"Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng." = "대용량 모델은 선택할 때만 다운로드합니다. 업데이트가 실패하면 현재 도구를 유지합니다.";
+"Mẫu phụ đề Final Cut" = "Final Cut 자막 템플릿";
+"Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên." = "템플릿은 Motion 폴더에 설치됩니다. 기존 템플릿은 유지됩니다.";
+"Đang cài mẫu…" = "템플릿 설치 중…";
+"Cài mẫu Final Cut" = "Final Cut 템플릿 설치";
+"Mẫu Final Cut đã sẵn sàng" = "Final Cut 템플릿이 준비되었습니다";
+"Không thể cài mẫu Final Cut" = "Final Cut 템플릿을 설치할 수 없습니다";
+"Xử lý âm thanh" = "오디오 처리";
+"Chỉ dùng CPU" = "CPU만 사용";
+"Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU." = "오디오 길이에 따라 가속 방식을 자동 선택합니다. 이 옵션을 켜면 GPU를 사용하지 않습니다.";
+"Công cụ tích hợp đã sẵn sàng" = "내장 도구가 준비되었습니다";
+"Chờ tác vụ hiện tại hoàn tất" = "현재 작업이 완료되기를 기다리는 중";
+"Chưa thiết lập nguồn cập nhật công cụ" = "도구 업데이트 소스가 설정되지 않았습니다";
+"Đang kiểm tra cập nhật công cụ…" = "도구 업데이트 확인 중…";
+"Công cụ đang ở phiên bản mới nhất" = "도구가 최신 상태입니다";
+"Đang tải công cụ…" = "도구 다운로드 중…";
+"Đang xác minh công cụ…" = "도구 검증 중…";
+"Đã cập nhật công cụ" = "도구가 업데이트되었습니다";
+"Không thể cập nhật; vẫn dùng công cụ hiện tại" = "업데이트 실패: 현재 도구를 유지합니다";
+"Đã phục hồi công cụ trước đó" = "이전 도구가 복원되었습니다";
+"Không thể phục hồi công cụ" = "도구를 복원할 수 없습니다";

@@ -53,6 +53,7 @@ SOURCES=(
     "$SRC/Domain/SubtitleLayout/SubtitleLinguisticBoundaryContext.swift"
     "$SRC/Domain/SubtitleLayout/SubtitleQualityAnalyzer.swift"
     "$SRC/Domain/SubtitleTiming/SpeechTimingRefiner.swift"
+    "$SRC/Domain/SubtitleTiming/SpeechWordTimestamp.swift"
     "$SRC/Domain/SubtitleTiming/SpeechWordTimingProcessor.swift"
     "$SRC/Domain/SubtitleTiming/SemanticCuePlanner.swift"
     "$SRC/Infrastructure/Translation/SubtitleTranscriptPostProcessor.swift"
@@ -99,6 +100,28 @@ run_swiftc \
     -o "$OUT_DIR/SubtitleBurnStyleTests"
 
 "$OUT_DIR/SubtitleBurnStyleTests"
+
+run_swiftc -Onone -target "arm64-apple-macos${MIN_MACOS}" -sdk "$SDK" \
+    -module-cache-path "$MODULE_CACHE" -parse-as-library \
+    "$SRC/Domain/Models/SRTSegment.swift" \
+    "$SRC/Domain/Models/SubtitleBurnStyle.swift" \
+    "$SRC/Domain/SubtitleTiming/SpeechWordTimestamp.swift" \
+    "$SRC/Domain/SubtitleTiming/NativeScriptAligner.swift" \
+    "$SRC/Infrastructure/Translation/SRTDocument.swift" \
+    "$SRC/Infrastructure/Translation/SRTTimecode.swift" \
+    "$SRC/Infrastructure/Translation/WhisperTimestampDecoder.swift" \
+    "$SRC/Infrastructure/Translation/NativeFCPXMLExporter.swift" \
+    "$SRC/Infrastructure/Translation/MotionTemplateInstaller.swift" \
+    "$SRC/Infrastructure/Translation/NativeAudioPreparation.swift" \
+    "$SRC/Infrastructure/Translation/NativeWhisperProcess.swift" \
+    "$SRC/Infrastructure/Tools/VerifiedToolManifest.swift" \
+    "$SRC/Infrastructure/Tools/VerifiedToolStore.swift" \
+    "$SCRIPT_DIR/tests/NativeIntegratedToolsTests.swift" \
+    -o "$OUT_DIR/NativeIntegratedToolsTests"
+NATIVE_XML_FIXTURES="$(mktemp -d /private/tmp/msm-native-xml.XXXXXX)"
+"$OUT_DIR/NativeIntegratedToolsTests" "$NATIVE_XML_FIXTURES"
+python3 "$SCRIPT_DIR/tests/test_native_fcpxml.py" "$NATIVE_XML_FIXTURES" "$SCRIPT_DIR/../scripts/lib/convert_srt_fcpxml.py"
+rm -rf "$NATIVE_XML_FIXTURES"
 
 # Actual shared native renderer, not the Python fallback. No key/network needed.
 run_swiftc -Onone -target "arm64-apple-macos${MIN_MACOS}" -sdk "$SDK" \

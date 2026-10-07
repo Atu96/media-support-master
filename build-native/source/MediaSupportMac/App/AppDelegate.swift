@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         AppCoordinator.shared.bootstrap()
         MainWindowController.shared.show()
         scheduleLayoutCaptureIfNeeded()
+        Task { await ToolUpdateManager.shared.checkIfDue() }
     }
 
     private func scheduleLayoutCaptureIfNeeded() {

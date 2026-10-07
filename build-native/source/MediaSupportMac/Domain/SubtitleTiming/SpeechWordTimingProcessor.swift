@@ -1,11 +1,5 @@
 import Foundation
 
-struct SpeechWordTimestamp: Equatable, Sendable {
-    let text: String
-    let startSeconds: Double
-    let endSeconds: Double
-}
-
 /// Envelope năng lượng đã rút gọn từ lần decode waveform có sẵn. Domain chỉ
 /// đọc độ tin cậy khoảng lặng; không giữ PCM và không phụ thuộc AVFoundation.
 struct SpeechBoundaryAudioEvidence: Equatable, Sendable {

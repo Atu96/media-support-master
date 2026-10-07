@@ -52,26 +52,10 @@ enum AppPaths {
 
     static func engineStatus() -> EngineStatus {
         var issues: [String] = []
-        if !FileManager.default.fileExists(atPath: toolsRoot.path) {
-            issues.append("Thiếu ~/Documents/Tools")
-        }
-        if !FileManager.default.fileExists(atPath: whisperHome.path) {
-            issues.append("Thiếu Whisper_Native")
-        }
-        let model = whisperHome.appendingPathComponent("ggml-large-v3-turbo.bin")
-        if !FileManager.default.fileExists(atPath: model.path) {
-            issues.append("Thiếu Whisper model")
-        }
-        let venv = whisperHome.appendingPathComponent("venv/bin/python")
-        if !FileManager.default.isExecutableFile(atPath: venv.path) {
-            issues.append("Thiếu venv Python")
-        }
-        if resolveFFmpeg() == nil {
-            issues.append("Thiếu ffmpeg")
-        }
-        let cutEngine = videoScripts.appendingPathComponent("cut_batch_interleave.sh")
-        if !FileManager.default.isExecutableFile(atPath: cutEngine.path) {
-            issues.append("Thiếu cut_batch_interleave.sh")
+        if (try? NativeWhisperRuntime.engineURL()) == nil { issues.append("Thiếu engine Whisper trong ứng dụng") }
+        if !OfflineWhisperModelManager.isModelReady,
+           !FileManager.default.fileExists(atPath:whisperHome.appendingPathComponent(OfflineWhisperModelManager.modelFileName).path) {
+            issues.append("Chưa tải model Whisper Offline")
         }
         return EngineStatus(isReady: issues.isEmpty, issues: issues)
     }

@@ -29,6 +29,8 @@ A new installation starts in English. Upgrades preserve a valid saved language, 
 
 ## Limits and dependencies
 
+**Current source after 0.2.1 Preview 1:** XML, spoken-language detection and Vietnamese/English/Korean/Chinese script alignment now use integrated native tools. A Motion template is included, and signed tool updates are available in Settings. Japanese script alignment keeps its existing workflow. The downloadable 0.2.1 preview predates this migration; see [integrated tool notes](docs/development/integrated-tools.md).
+
 - Online providers require your own credentials and may charge for usage. Voice/model availability and quotas belong to the provider.
 - The offline model is downloaded separately (about 1.62 GB); it is not stored in Git or bundled with the app. The small ARM Whisper executable and its notices are included.
 - The release bundles its runtime scripts. Existing legacy workflows still use external tools under `~/Documents/Tools`, including `Whisper_Native`. FFmpeg is required for some extraction/fallback operations and is not bundled with this preview. Missing tools are reported by diagnostics; the installer does not install or rebuild them.

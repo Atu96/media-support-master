@@ -623,3 +623,32 @@
 "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac." = "Transcribe, translate, edit subtitles, and dub audio in one timeline on Mac.";
 "Thích ứng dụng này?" = "Enjoying the app?";
 "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!" = "If this app saves you time, you can support its development on Ko-fi. No pressure — thanks for using it!";
+
+/* Integrated tools */
+"Công cụ tích hợp" = "Integrated tools";
+"Mẫu Final Cut và cập nhật công cụ" = "Final Cut template and tool updates";
+"XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng." = "XML export, script alignment and language detection use tools included in the app.";
+"Tự cập nhật công cụ khi ứng dụng rảnh" = "Update tools automatically when the app is idle";
+"Kiểm tra cập nhật" = "Check for updates";
+"Phục hồi công cụ trước đó" = "Restore previous tools";
+"Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng." = "Large models download only when you choose. Failed updates keep the current tools.";
+"Mẫu phụ đề Final Cut" = "Final Cut subtitle template";
+"Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên." = "The template installs in your Motion folder. Existing templates are preserved.";
+"Đang cài mẫu…" = "Installing template…";
+"Cài mẫu Final Cut" = "Install Final Cut template";
+"Mẫu Final Cut đã sẵn sàng" = "Final Cut template is ready";
+"Không thể cài mẫu Final Cut" = "Could not install Final Cut template";
+"Xử lý âm thanh" = "Audio processing";
+"Chỉ dùng CPU" = "Use CPU only";
+"Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU." = "The app selects acceleration based on audio length. Enable this option to avoid GPU use.";
+"Công cụ tích hợp đã sẵn sàng" = "Integrated tools are ready";
+"Chờ tác vụ hiện tại hoàn tất" = "Waiting for the current task to finish";
+"Chưa thiết lập nguồn cập nhật công cụ" = "Tool update source is not configured";
+"Đang kiểm tra cập nhật công cụ…" = "Checking tool updates…";
+"Công cụ đang ở phiên bản mới nhất" = "Tools are up to date";
+"Đang tải công cụ…" = "Downloading tools…";
+"Đang xác minh công cụ…" = "Verifying tools…";
+"Đã cập nhật công cụ" = "Tools updated";
+"Không thể cập nhật; vẫn dùng công cụ hiện tại" = "Update failed; keeping current tools";
+"Đã phục hồi công cụ trước đó" = "Previous tools restored";
+"Không thể phục hồi công cụ" = "Could not restore tools";

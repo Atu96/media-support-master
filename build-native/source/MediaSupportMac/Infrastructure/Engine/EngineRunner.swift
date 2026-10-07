@@ -19,6 +19,7 @@ final class EngineRunner: ObservableObject {
 
     private(set) var activeProcessPID: Int32?
     private var process: Process?
+    private var nativeTask: Task<Void, Error>?
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
 
@@ -368,9 +369,15 @@ final class EngineRunner: ObservableObject {
         appendLog("▶ \(title)")
 
         do {
-            try await operation()
+            let work = Task { try await operation() }
+            nativeTask = work
+            defer { nativeTask = nil }
+            try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel() }
             lastExitCode = 0
             appendLog("✓ Hoàn tất")
+        } catch is CancellationError {
+            lastExitCode=130
+            appendLog("Đã dừng tác vụ")
         } catch {
             lastCloudAlert = CloudAIErrorClassifier.alert(for: error)
             appendLog("✗ Lỗi: \(error.localizedDescription)")
@@ -382,11 +389,13 @@ final class EngineRunner: ObservableObject {
     }
 
     func cancel() {
+        nativeTask?.cancel()
         process?.terminate()
     }
 
     /// Thoát app — dừng pipe, kill job engine và mọi process con.
     func shutdownForQuit() {
+        nativeTask?.cancel()
         clearPipeBuffer()
         stdoutPipe?.fileHandleForReading.readabilityHandler = nil
         stderrPipe?.fileHandleForReading.readabilityHandler = nil

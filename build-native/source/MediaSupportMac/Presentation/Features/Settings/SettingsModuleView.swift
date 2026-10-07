@@ -27,7 +27,7 @@ struct SettingsModuleView: View {
         [
             ("TRÍ TUỆ NHÂN TẠO", [.translate, .groq, .gemini]),
             ("GIỌNG NÓI", [.dubbing]),
-            ("TRÊN MÁY", [.offlineWhisper]),
+            ("TRÊN MÁY", [.offlineWhisper, .tools]),
             ("ỨNG DỤNG", [.appearance, .backup, .system, .about]),
         ]
     }
@@ -57,6 +57,8 @@ struct SettingsModuleView: View {
                         SettingsGroqKeyPanel()
                     case .offlineWhisper:
                         SettingsOfflineWhisperPanel()
+                    case .tools:
+                        SettingsToolsPanel()
                     case .dubbing:
                         SettingsDubbingPanel()
                     case .appearance:

@@ -623,3 +623,32 @@
 "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac." = "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac.";
 "Thích ứng dụng này?" = "Thích ứng dụng này?";
 "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!" = "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!";
+
+/* Integrated tools */
+"Công cụ tích hợp" = "Công cụ tích hợp";
+"Mẫu Final Cut và cập nhật công cụ" = "Mẫu Final Cut và cập nhật công cụ";
+"XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng." = "XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng.";
+"Tự cập nhật công cụ khi ứng dụng rảnh" = "Tự cập nhật công cụ khi ứng dụng rảnh";
+"Kiểm tra cập nhật" = "Kiểm tra cập nhật";
+"Phục hồi công cụ trước đó" = "Phục hồi công cụ trước đó";
+"Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng." = "Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng.";
+"Mẫu phụ đề Final Cut" = "Mẫu phụ đề Final Cut";
+"Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên." = "Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên.";
+"Đang cài mẫu…" = "Đang cài mẫu…";
+"Cài mẫu Final Cut" = "Cài mẫu Final Cut";
+"Mẫu Final Cut đã sẵn sàng" = "Mẫu Final Cut đã sẵn sàng";
+"Không thể cài mẫu Final Cut" = "Không thể cài mẫu Final Cut";
+"Xử lý âm thanh" = "Xử lý âm thanh";
+"Chỉ dùng CPU" = "Chỉ dùng CPU";
+"Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU." = "Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU.";
+"Công cụ tích hợp đã sẵn sàng" = "Công cụ tích hợp đã sẵn sàng";
+"Chờ tác vụ hiện tại hoàn tất" = "Chờ tác vụ hiện tại hoàn tất";
+"Chưa thiết lập nguồn cập nhật công cụ" = "Chưa thiết lập nguồn cập nhật công cụ";
+"Đang kiểm tra cập nhật công cụ…" = "Đang kiểm tra cập nhật công cụ…";
+"Công cụ đang ở phiên bản mới nhất" = "Công cụ đang ở phiên bản mới nhất";
+"Đang tải công cụ…" = "Đang tải công cụ…";
+"Đang xác minh công cụ…" = "Đang xác minh công cụ…";
+"Đã cập nhật công cụ" = "Đã cập nhật công cụ";
+"Không thể cập nhật; vẫn dùng công cụ hiện tại" = "Không thể cập nhật; vẫn dùng công cụ hiện tại";
+"Đã phục hồi công cụ trước đó" = "Đã phục hồi công cụ trước đó";
+"Không thể phục hồi công cụ" = "Không thể phục hồi công cụ";

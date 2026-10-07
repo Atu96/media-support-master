@@ -96,7 +96,15 @@ struct SettingsOfflineWhisperPanel: View {
             }
             .padding(.bottom, 8)
         }
-        .onAppear { manager.refreshStatus() }
+        .onAppear {
+            manager.refreshStatus()
+            if !OfflineWhisperModelManager.isModelReady,
+               FileManager.default.fileExists(atPath:OfflineWhisperModelManager.modelURL.path)
+                || FileManager.default.fileExists(atPath:AppPaths.whisperHome.appendingPathComponent(OfflineWhisperModelManager.modelFileName).path) {
+                // A local verification/import only; never download on opening Settings.
+                Task { _ = try? await OfflineWhisperModelManager.ensureAvailableModel() }
+            }
+        }
         .alert("Xóa model Whisper Offline?", isPresented: $showDeleteConfirm) {
             Button("Xóa model", role: .destructive) { deleteModel() }
             Button("Huỷ", role: .cancel) {}

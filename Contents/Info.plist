@@ -12,33 +12,37 @@
 		<string>ko</string>
 		<string>zh-Hans</string>
 	</array>
-    <key>CFBundleDisplayName</key>
-    <string>Media Support Master</string>
-    <key>CFBundleExecutable</key>
-    <string>MediaSupportMac</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.gemst.media-support-master</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>Media Support Master</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.2.1</string>
-    <key>CFBundleVersion</key>
-    <string>4</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.video</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>15.0</string>
-    <key>MediaSupportBuildChannel</key>
-    <string>release</string>
-    <key>MediaSupportDubbingEnabled</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
+	<key>CFBundleDisplayName</key>
+	<string>Media Support Master</string>
+	<key>CFBundleExecutable</key>
+	<string>MediaSupportMac</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.gemst.media-support-master</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Media Support Master</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2.2</string>
+	<key>CFBundleVersion</key>
+	<string>5</string>
+	<key>MediaSupportToolVersion</key>
+	<string>20261007.1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.video</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>MediaSupportBuildChannel</key>
+	<string>release</string>
+	<key>MediaSupportDubbingEnabled</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>MediaSupportToolUpdatePublicKey</key>
+	<string>gF+7pH5GK0CycCkCUzuYxTyCOXEPGzdMZu5RZ2nDadQ=</string>
 </dict>
 </plist>

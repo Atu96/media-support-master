@@ -36,21 +36,20 @@ final class SubtitleScriptCreateController {
                 session.setMediaURL(draft)
             }
             guard let mediaURL = session.mediaURL else { return }
+            let originalSegments=session.segments
+            let originalVariant=session.activeTranscriptVariant
 
-            session.whisperComplete = false
-            session.translateComplete = false
-            session.activeTranscriptVariant = .original
-            ProjectBackupStore.clearTranslatedTranscript(for: mediaURL)
             session.exportMessage = ""
-            session.segments = []
-            session.resetEditHistory()
-            session.transcriptSummary = ""
             session.isScriptAlignJobInFlight = true
             beginProgressTracking()
 
             let scriptFile = FileManager.default.temporaryDirectory
                 .appendingPathComponent("msm-kichban-\(UUID().uuidString).txt")
-            defer { try? FileManager.default.removeItem(at: scriptFile) }
+            let scriptOutput=scriptFile.deletingPathExtension().appendingPathExtension("srt")
+            defer {
+                try? FileManager.default.removeItem(at:scriptFile)
+                try? FileManager.default.removeItem(at:scriptOutput)
+            }
 
             do {
                 try script.write(to: scriptFile, atomically: true, encoding: .utf8)
@@ -70,31 +69,25 @@ final class SubtitleScriptCreateController {
             await session.engine.runScriptAlignSRT(
                 for: mediaURL,
                 scriptFile: scriptFile,
-                language: language
+                language: language,
+                outputURL:scriptOutput
             )
+            guard session.mediaURL == mediaURL else {
+                endProgressTracking()
+                session.isScriptAlignJobInFlight=false
+                return
+            }
             session.refreshEngineStatus()
 
             setProgressAtLeast(92)
             await Task.yield()
 
-            let coLocatedSRT = ProjectBackupStore.coLocatedSRT(for: mediaURL)
             let exitOK = session.runner.lastExitCode == 0
-
-            let finish = await Task.detached(priority: .userInitiated) {
-                SubtitleCreateJobFinisher.ingestAndParse(
-                    coLocatedSRT: coLocatedSRT,
-                    media: mediaURL,
-                    exitOK: exitOK
-                )
-            }.value
-
-            endProgressTracking()
-
-            if let srt = finish.srtURL {
-                session.srtURL = srt
+            if exitOK {
                 let laidOut = await Task.detached(priority: .userInitiated) {
-                    SubtitleTranscriptPostProcessor.format(
-                        finish.segments,
+                    let parsed=SubtitleCreateJobFinisher.parseSRTFile(scriptOutput)
+                    return SubtitleTranscriptPostProcessor.format(
+                        parsed,
                         sourceLanguage: language.rawValue,
                         style: wrapStyle,
                         fontSize: burnStyle.fontSize,
@@ -104,17 +97,30 @@ final class SubtitleScriptCreateController {
                         coalescesSpeechChunks: false
                     )
                 }.value
-                if !laidOut.isEmpty {
-                    try? SRTDocument.renderSRT(laidOut).write(
-                        to: srt,
-                        atomically: true,
-                        encoding: .utf8
-                    )
+                endProgressTracking()
+                guard !laidOut.isEmpty, session.mediaURL==mediaURL,
+                      session.segments==originalSegments,session.activeTranscriptVariant==originalVariant else {
+                    session.isScriptAlignJobInFlight=false
+                    session.runner.appendLog("⚠️ Dự án đã thay đổi; giữ nguyên phụ đề đang chỉnh.")
+                    return
                 }
+                let srt=ProjectBackupStore.coLocatedSRT(for:mediaURL)
+                do {
+                    try SRTDocument.renderSRT(laidOut).write(to:srt,atomically:true,encoding:.utf8)
+                } catch {
+                    session.isScriptAlignJobInFlight=false
+                    session.runner.appendLog("✗ \(error.localizedDescription)")
+                    return
+                }
+                try? ProjectBackupStore.ingestTranscript(from:srt,media:mediaURL)
+                session.srtURL=ProjectBackupStore.resolvedSRTURL(for:mediaURL) ?? srt
+                session.translateComplete=false
+                session.transcriptSummary=""
+                ProjectBackupStore.clearTranslatedTranscript(for:mediaURL)
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
-                    session.segments = laidOut.isEmpty ? finish.segments : laidOut
+                    session.segments = laidOut
                     session.whisperComplete = true
                     session.scriptAlignProgressPercent = 100
                     session.isScriptAlignJobInFlight = false
@@ -122,17 +128,13 @@ final class SubtitleScriptCreateController {
                 session.activeTranscriptVariant = .original
                 session.sourceLang = language.rawValue
                 session.resetEditHistory()
-                if finish.warning == "vault" {
-                    session.runner.appendLog("⚠️ Không copy SRT vào backup vault")
-                }
-
                 let elapsed = Date().timeIntervalSince(started)
                 session.completionSummary =
                     "\(session.segments.count) đoạn • \(String(format: "%.1f", elapsed))s • \(language.label)"
                 session.runner.appendLog("✓ Align kịch bản hoàn tất — \(session.completionSummary)")
                 session.persistProjectSession()
             } else {
-                session.scriptAlignProgressPercent = 100
+                endProgressTracking()
                 session.isScriptAlignJobInFlight = false
                 if !exitOK {
                     session.runner.appendLog("✗ Align kịch bản thất bại — không có SRT")

@@ -88,7 +88,7 @@ msm_progress 75
 
 msm_progress 80
 ALIGNED_SRT="$OUT_DIR/aligned.srt"
-FINAL_SRT="$MEDIA_DIR/${BASENAME}.srt"
+FINAL_SRT="${MSM_SCRIPT_OUTPUT:-$MEDIA_DIR/${BASENAME}.srt}"
 if [[ "$LANG_CODE" == "ja" ]]; then
     echo "⏳ [3/4] NLP align tiếng Nhật (MeCab + Kinsoku + CPS)…"
     UNIDIC_DIR=""

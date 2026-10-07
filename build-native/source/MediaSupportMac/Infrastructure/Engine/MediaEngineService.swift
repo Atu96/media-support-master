@@ -60,19 +60,31 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
     func runScriptAlignSRT(
         for mediaURL: URL,
         scriptFile: URL,
-        language: ScriptAlignmentLanguage
+        language: ScriptAlignmentLanguage,
+        outputURL: URL
     ) async {
-        await runner.run(
-            ToolsBridge.scriptAlignSRTJob(
-                for: mediaURL,
-                scriptFile: scriptFile,
-                language: language
-            )
-        )
+        // Keep the established Japanese MeCab alignment path.
+        if language == .japanese {
+            await runner.run(ToolsBridge.scriptAlignSRTJob(for:mediaURL,scriptFile:scriptFile,
+                                                          language:language,outputURL:outputURL))
+            return
+        }
+        await runner.runTask(title:"Align kịch bản — \(mediaURL.lastPathComponent)") {
+            try await NativeScriptAlignmentService.align(media:mediaURL,scriptFile:scriptFile,output:outputURL,language:language.rawValue) { line in
+                Task { @MainActor in self.runner.appendLog(line) }
+            }
+        }
     }
 
     func runDetectMediaLanguage(for mediaURL: URL) async {
-        await runner.run(ToolsBridge.detectMediaLanguageJob(for: mediaURL))
+        await runner.runTask(title:"Nhận diện ngôn ngữ — \(mediaURL.lastPathComponent)") {
+            let record=try await NativeWhisperRuntime.detectLanguage(media:mediaURL) { line in
+                Task { @MainActor in self.runner.appendLog(line) }
+            }
+            try MediaLanguageRecord.save(record,near:mediaURL)
+            ProjectBackupStore.recordDetectedLanguage(record,for:mediaURL)
+            self.runner.appendLog("✓ \(record.language)")
+        }
     }
 
     func runTranslateSRT(
@@ -124,7 +136,17 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
     }
 
     func runExportSRTFCPXML(srt: URL, output: URL, style: SubtitleBurnStyle) async {
-        await runner.run(ToolsBridge.exportSRTFCPXMLJob(srt: srt, output: output, style: style))
+        await runner.runTask(title: "Xuất FCPXML — \(srt.lastPathComponent)") {
+            let worker = Task.detached(priority: .utility) {
+                let template = try MotionTemplateInstaller.resolveOrInstall()
+                let text = try String(contentsOf: srt, encoding: .utf8)
+                let xml = try NativeFCPXMLExporter.render(segments: SRTDocument.parseSegments(text),
+                    name: srt.deletingPathExtension().lastPathComponent, style: style, templateURL: template)
+                try Task.checkCancellation()
+                try xml.write(to: output, atomically: true, encoding: .utf8)
+            }
+            try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+        }
     }
 
     func translatedOutputURL(for input: URL, targetLang: String) -> URL {

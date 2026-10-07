@@ -66,6 +66,12 @@ else
     info "Không có ffmpeg trong Resources — dùng brew ffmpeg khi chạy"
 fi
 
+MOTION_SRC="$APP_ROOT/assets/motion/Phu de nen den"
+if [[ -f "$MOTION_SRC/Phu de nen den.moti" ]]; then
+    mkdir -p "$APP_STAGING/Contents/Resources/MotionTemplates"
+    cp -R "$MOTION_SRC" "$APP_STAGING/Contents/Resources/MotionTemplates/"
+fi
+
 # Optional: AppIcon từ Resources nếu có
 ICON_SRC="$APP_ROOT/assets/branding/AppIcon.icns"
 [[ -f "$ICON_SRC" ]] || ICON_SRC="$RESOURCES/Contents/Resources/AppIcon.icns"

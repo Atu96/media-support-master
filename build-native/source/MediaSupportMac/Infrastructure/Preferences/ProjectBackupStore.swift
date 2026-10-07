@@ -432,6 +432,12 @@ enum ProjectBackupStore {
         return MediaLanguageRecord.load(near: media)
     }
 
+    static func recordDetectedLanguage(_ record:MediaLanguageRecord,for media:URL) {
+        guard var manifest=load(for:media) else { return }
+        manifest.lang=record
+        writeManifest(manifest,media:media)
+    }
+
     static func save(
         media: URL,
         srtURL: URL?,

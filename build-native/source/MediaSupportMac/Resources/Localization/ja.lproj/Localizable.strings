@@ -605,3 +605,32 @@
 "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac." = "Macの一つのタイムラインで文字起こし、翻訳、字幕編集、吹き替えを行えます。";
 "Thích ứng dụng này?" = "アプリはお役に立ちましたか？";
 "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!" = "このアプリが時間の節約に役立ちましたら、Ko-fiで開発を応援していただけます。支援は任意です。ご利用ありがとうございます！";
+
+/* Integrated tools */
+"Công cụ tích hợp" = "内蔵ツール";
+"Mẫu Final Cut và cập nhật công cụ" = "Final Cutテンプレートとツール更新";
+"XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng." = "XML書き出し、原稿の同期、言語検出にはアプリ内のツールを使用します。";
+"Tự cập nhật công cụ khi ứng dụng rảnh" = "アプリが待機中にツールを自動更新";
+"Kiểm tra cập nhật" = "更新を確認";
+"Phục hồi công cụ trước đó" = "以前のツールを復元";
+"Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng." = "大きなモデルは選択時のみダウンロードします。更新に失敗しても現在のツールを保持します。";
+"Mẫu phụ đề Final Cut" = "Final Cut字幕テンプレート";
+"Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên." = "テンプレートをMotionフォルダにインストールします。既存のテンプレートは保持します。";
+"Đang cài mẫu…" = "テンプレートをインストール中…";
+"Cài mẫu Final Cut" = "Final Cutテンプレートをインストール";
+"Mẫu Final Cut đã sẵn sàng" = "Final Cutテンプレートを使用できます";
+"Không thể cài mẫu Final Cut" = "Final Cutテンプレートをインストールできません";
+"Xử lý âm thanh" = "音声処理";
+"Chỉ dùng CPU" = "CPUのみ使用";
+"Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU." = "音声の長さに応じて自動的に高速化方式を選びます。有効にするとGPUを使用しません。";
+"Công cụ tích hợp đã sẵn sàng" = "内蔵ツールを使用できます";
+"Chờ tác vụ hiện tại hoàn tất" = "現在のタスクの完了を待機中";
+"Chưa thiết lập nguồn cập nhật công cụ" = "ツールの更新元が未設定です";
+"Đang kiểm tra cập nhật công cụ…" = "ツールの更新を確認中…";
+"Công cụ đang ở phiên bản mới nhất" = "ツールは最新です";
+"Đang tải công cụ…" = "ツールをダウンロード中…";
+"Đang xác minh công cụ…" = "ツールを検証中…";
+"Đã cập nhật công cụ" = "ツールを更新しました";
+"Không thể cập nhật; vẫn dùng công cụ hiện tại" = "更新に失敗しました。現在のツールを保持します";
+"Đã phục hồi công cụ trước đó" = "以前のツールを復元しました";
+"Không thể phục hồi công cụ" = "ツールを復元できません";

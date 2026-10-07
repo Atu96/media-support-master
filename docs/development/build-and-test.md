@@ -32,7 +32,7 @@ The TEST bundle finds scripts relative to its checkout. Release bundles prefer t
 
 ## Preview DMG
 
-Commit runtime changes, run the offline QA gate above, then use `./build-native/export-release-app.command v0.2.1-preview.1`. It compiles the release app, bundles tracked runtime scripts and refine source (no environments or tests), signs locally, creates and verifies a DMG under `dist/release`, and writes a relative-filename SHA-256 file. It deliberately excludes local FFmpeg binaries and models. Verify a read-only mount and startup before publishing; never reuse a published tag or overwrite its assets. The preview is ad-hoc signed, not notarized.
+Commit runtime changes, run the offline QA gate above, write the matching `docs/releases/X.Y.Z-preview.N.md`, then use `./build-native/export-release-app.command vX.Y.Z-preview.N` with the actual app version. It compiles the release app, bundles tracked runtime scripts/refine source and the Motion title (no environments or tests), signs locally, creates and verifies a DMG under `dist/release`, and writes a relative-filename SHA-256 file. It deliberately excludes local FFmpeg binaries and models. Verify a read-only mount and startup before publishing; never reuse a published tag or overwrite its assets. The preview is ad-hoc signed, not notarized. See [integrated tools](integrated-tools.md) for the current native paths and tool-feed maintenance.
 
 ## Reporting checks
 

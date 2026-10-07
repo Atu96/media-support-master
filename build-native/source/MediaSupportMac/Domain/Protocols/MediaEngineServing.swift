@@ -14,7 +14,8 @@ protocol MediaEngineServing: AnyObject {
     func runScriptAlignSRT(
         for mediaURL: URL,
         scriptFile: URL,
-        language: ScriptAlignmentLanguage
+        language: ScriptAlignmentLanguage,
+        outputURL: URL
     ) async
     func runDetectMediaLanguage(for mediaURL: URL) async
     func runTranslateSRT(

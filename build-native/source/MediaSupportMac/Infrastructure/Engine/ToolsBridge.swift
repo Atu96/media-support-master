@@ -27,7 +27,8 @@ enum ToolsBridge {
     static func scriptAlignSRTJob(
         for mediaURL: URL,
         scriptFile: URL,
-        language: ScriptAlignmentLanguage
+        language: ScriptAlignmentLanguage,
+        outputURL: URL
     ) -> EngineJob {
         let script = AppPaths.scriptsDir.appendingPathComponent("run_tao_srt_kichban.sh").path
         let w = SubtitleWrapStyle.load().clamped()
@@ -39,6 +40,7 @@ enum ToolsBridge {
             executable: "/bin/zsh",
             arguments: [script, mediaURL.path, scriptFile.path, language.rawValue],
             environment: [
+                "MSM_SCRIPT_OUTPUT": outputURL.path,
                 "MSM_MAX_LINE_CHARS": String(maxLine),
                 "MSM_MAX_BLOCK_CHARS": String(maxBlock),
                 "MSM_MAX_LINES": String(w.maxLines),

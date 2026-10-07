@@ -605,3 +605,32 @@
 "Chép lời, dịch, chỉnh phụ đề và lồng tiếng trong một Timeline trên Mac." = "在 Mac 的同一时间线中转写、翻译、编辑字幕和配音。";
 "Thích ứng dụng này?" = "喜欢这个应用吗？";
 "Nếu app giúp bạn tiết kiệm thời gian, bạn có thể ủng hộ tác giả trên Ko-fi để tiếp tục cải thiện ứng dụng. Hoàn toàn tự nguyện — cảm ơn bạn đã sử dụng!" = "如果应用帮您节省了时间，您可以在 Ko-fi 支持它的开发。完全自愿，感谢您的使用！";
+
+/* Integrated tools */
+"Công cụ tích hợp" = "集成工具";
+"Mẫu Final Cut và cập nhật công cụ" = "Final Cut模板和工具更新";
+"XML, khớp kịch bản và nhận diện ngôn ngữ chạy bằng công cụ trong ứng dụng." = "XML导出、文稿对齐和语言识别使用应用内置工具。";
+"Tự cập nhật công cụ khi ứng dụng rảnh" = "应用空闲时自动更新工具";
+"Kiểm tra cập nhật" = "检查更新";
+"Phục hồi công cụ trước đó" = "恢复之前的工具";
+"Model lớn chỉ tải khi bạn chọn. Cập nhật lỗi vẫn giữ công cụ đang dùng." = "大型模型仅在您选择时下载。更新失败会保留当前工具。";
+"Mẫu phụ đề Final Cut" = "Final Cut字幕模板";
+"Mẫu được cài trong thư mục Motion của bạn. Mẫu đã có sẽ được giữ nguyên." = "模板安装到您的Motion文件夹。现有模板将保留。";
+"Đang cài mẫu…" = "正在安装模板…";
+"Cài mẫu Final Cut" = "安装Final Cut模板";
+"Mẫu Final Cut đã sẵn sàng" = "Final Cut模板已就绪";
+"Không thể cài mẫu Final Cut" = "无法安装Final Cut模板";
+"Xử lý âm thanh" = "音频处理";
+"Chỉ dùng CPU" = "仅使用CPU";
+"Mặc định ứng dụng tự chọn tăng tốc theo độ dài âm thanh. Bật tùy chọn này để không dùng GPU." = "应用根据音频长度自动选择加速方式。启用此选项可避免使用GPU。";
+"Công cụ tích hợp đã sẵn sàng" = "集成工具已就绪";
+"Chờ tác vụ hiện tại hoàn tất" = "等待当前任务完成";
+"Chưa thiết lập nguồn cập nhật công cụ" = "尚未配置工具更新源";
+"Đang kiểm tra cập nhật công cụ…" = "正在检查工具更新…";
+"Công cụ đang ở phiên bản mới nhất" = "工具已是最新版本";
+"Đang tải công cụ…" = "正在下载工具…";
+"Đang xác minh công cụ…" = "正在验证工具…";
+"Đã cập nhật công cụ" = "工具已更新";
+"Không thể cập nhật; vẫn dùng công cụ hiện tại" = "更新失败，继续使用当前工具";
+"Đã phục hồi công cụ trước đó" = "已恢复之前的工具";
+"Không thể phục hồi công cụ" = "无法恢复工具";
