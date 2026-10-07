@@ -13,7 +13,7 @@ A Mac app for transcribing media, editing subtitles, translating text, and dubbi
 
 ## Availability
 
-This public repository contains development source for Apple silicon Macs. The app targets macOS 15 or later. Download the first preview from [GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v0.2.1-preview.1); see its notes for setup and known limits. Intel is not supported by that installer.
+This public repository contains development source for Apple silicon Macs. The app targets macOS 15 or later. Download [0.2.2 Preview 1 from GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v0.2.2-preview.1); see its notes for setup and known limits. Intel is not supported by that installer.
 
 The preview installer and local TEST bundles use ad-hoc signing; they are not Developer ID signed or notarized. A source build is not a certification that every provider, language, or media file has been tested live.
 
@@ -29,12 +29,12 @@ A new installation starts in English. Upgrades preserve a valid saved language, 
 
 ## Limits and dependencies
 
-**Current source after 0.2.1 Preview 1:** XML, spoken-language detection and Vietnamese/English/Korean/Chinese script alignment now use integrated native tools. A Motion template is included, and signed tool updates are available in Settings. Japanese script alignment keeps its existing workflow. The downloadable 0.2.1 preview predates this migration; see [integrated tool notes](docs/development/integrated-tools.md).
+**0.2.2 Preview 1:** XML, spoken-language detection and Vietnamese/English/Korean/Chinese script alignment use integrated native tools. A Motion template is included, and signed tool updates are available in Settings. Japanese script alignment keeps its existing workflow; see [integrated tool notes](docs/development/integrated-tools.md).
 
 - Online providers require your own credentials and may charge for usage. Voice/model availability and quotas belong to the provider.
 - The offline model is downloaded separately (about 1.62 GB); it is not stored in Git or bundled with the app. The small ARM Whisper executable and its notices are included.
-- The release bundles its runtime scripts. Existing legacy workflows still use external tools under `~/Documents/Tools`, including `Whisper_Native`. FFmpeg is required for some extraction/fallback operations and is not bundled with this preview. Missing tools are reported by diagnostics; the installer does not install or rebuild them.
-- FCPXML refers to the custom Motion title **Phu de nen den**, which is not packaged in this repository. A matching title installation is needed for that appearance in Final Cut Pro. The converter and its style regression are included.
+- Native XML, language detection and Vietnamese/English/Korean/Chinese script alignment do not require Python or FFmpeg for media readable by macOS. Japanese script alignment and optional legacy workflows still use external tools under `~/Documents/Tools`, including `Whisper_Native`. FFmpeg/Python runtimes are not bundled; the installer does not install or rebuild the legacy environment.
+- FCPXML uses the bundled Motion title **Phu de nen den**. The app installs it when missing and preserves existing/user-modified templates. Native and legacy XML converters are compared by regression fixtures.
 - Subtitle boundaries use local token/phrase rules and available macOS language analysis. They can improve unpunctuated text, but do not guarantee perfect sentence understanding. Japanese retains its separate existing layout path.
 - SRT imports do not contain per-word audio timestamps. Reformatting an existing project uses its text and cue gaps; verified word timestamps are used when supplied during transcription.
 - Native preview/export and fixture tests are covered by automated QA. Real media and paid-provider testing remain separate checks.
