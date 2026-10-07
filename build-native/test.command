@@ -37,6 +37,7 @@ run_swiftc() {
 }
 
 SOURCES=(
+    "$SRC/Infrastructure/Paths/AppRuntimeRootResolver.swift"
     "$SRC/Domain/Models/AppLanguageSelectionPolicy.swift"
     "$SRC/Domain/Models/SRTSegment.swift"
     "$SRC/Infrastructure/Translation/SRTTimecode.swift"

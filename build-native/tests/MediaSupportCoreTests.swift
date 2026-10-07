@@ -71,6 +71,7 @@ enum MediaSupportCoreTests {
         run("SRT timecode chính xác", testTimecode)
         run("Cài mới English, nâng cấp giữ lựa chọn ngôn ngữ", testAppLanguageSelection)
         run("Support chỉ dùng URL HTTPS cố định không kèm dữ liệu", testSupportLink)
+        run("App di chuyển vẫn tìm script nhúng, giữ override và TEST checkout", testRuntimeRoot)
         run("SRT parse + render giữ nội dung", testSRTDocument)
         run("SRT editor giữ timing hợp lệ", testSRTEditor)
         run("Chọn nhiều cue và range liền kề ổn định", testTimelineCueSelection)
@@ -312,6 +313,33 @@ enum MediaSupportCoreTests {
 
     private static func word(_ text: String, _ start: Double, _ end: Double) -> SpeechWordTimestamp {
         SpeechWordTimestamp(text: text, startSeconds: start, endSeconds: end)
+    }
+
+    private static func testRuntimeRoot() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let checkout = root.appendingPathComponent("checkout")
+        let bundle = checkout.appendingPathComponent("dist/test/App.app")
+        let resources = bundle.appendingPathComponent("Contents/Resources")
+        let runtime = resources.appendingPathComponent("Runtime")
+        let home = root.appendingPathComponent("home")
+        func resolve(_ override: String? = nil) -> URL {
+            AppRuntimeRootResolver.resolve(configured: override, bundleURL: bundle, resourceURL: resources, home: home)
+        }
+        try expect(resolve().path == home.appendingPathComponent("Documents/Media Support App").path, "legacy fallback sai")
+        for candidate in [checkout, runtime] {
+            try FileManager.default.createDirectory(at: candidate.appendingPathComponent("scripts"), withIntermediateDirectories: true)
+            try Data().write(to: candidate.appendingPathComponent("scripts/common.sh"))
+            try expect(resolve().path == candidate.path, "script nhúng phải ưu tiên hơn checkout")
+        }
+        let override = root.appendingPathComponent("custom")
+        try expect(resolve(override.path).path == override.path, "APP_ROOT phải thắng runtime nhúng")
+        let moved = root.appendingPathComponent("Applications/App.app")
+        try FileManager.default.createDirectory(at: moved.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: bundle, to: moved)
+        let movedResources = moved.appendingPathComponent("Contents/Resources")
+        let actual = AppRuntimeRootResolver.resolve(configured: nil, bundleURL: moved, resourceURL: movedResources, home: home)
+        try expect(actual.path == movedResources.appendingPathComponent("Runtime").path, "app di chuyển vẫn phải dùng script nhúng")
     }
 
     private static func testAppLanguageSelection() throws {

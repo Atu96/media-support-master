@@ -2,17 +2,12 @@ import Foundation
 
 /// Đường dẫn runtime — đọc một lần, không hardcode rải rác.
 enum AppPaths {
-    static let appRoot: URL = {
-        if let configured = ProcessInfo.processInfo.environment["APP_ROOT"], !configured.isEmpty {
-            return URL(fileURLWithPath: configured, isDirectory: true).standardizedFileURL
-        }
-        let candidate = Bundle.main.bundleURL.deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent()
-        if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("scripts/common.sh").path) {
-            return candidate
-        }
-        return URL(fileURLWithPath: "\(NSHomeDirectory())/Documents/Media Support App")
-    }()
+    static let appRoot = AppRuntimeRootResolver.resolve(
+        configured: ProcessInfo.processInfo.environment["APP_ROOT"],
+        bundleURL: Bundle.main.bundleURL,
+        resourceURL: Bundle.main.resourceURL,
+        home: URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+    )
     static let toolsRoot = URL(fileURLWithPath: "\(NSHomeDirectory())/Documents/Tools")
     static let resourcesRoot = URL(fileURLWithPath: "\(NSHomeDirectory())/Documents/Resources")
     static let whisperHome = toolsRoot.appendingPathComponent("Whisper_Native", isDirectory: true)

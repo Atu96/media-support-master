@@ -28,7 +28,11 @@ The build root is derived from the checkout, with an optional `APP_ROOT` overrid
 
 Building the app does not install all legacy workflows. Existing wrappers can still need external Whisper/FFmpeg/media tools. Diagnostics currently check that legacy environment, so a new checkout can build while reporting missing runtime tools. Offline native transcription uses the included small Whisper engine and a separately downloaded model.
 
-The TEST bundle finds scripts relative to its checkout; an installed app may use the legacy `~/Documents/Media Support App` location. Full portable installer distribution is a separate packaging task.
+The TEST bundle finds scripts relative to its checkout. Release bundles prefer their own `Contents/Resources/Runtime` scripts; `APP_ROOT` can explicitly override this. Legacy external tools remain separate dependencies.
+
+## Preview DMG
+
+Commit runtime changes, run the offline QA gate above, then use `./build-native/export-release-app.command v0.2.1-preview.1`. It compiles the release app, bundles tracked runtime scripts and refine source (no environments or tests), signs locally, creates and verifies a DMG under `dist/release`, and writes a relative-filename SHA-256 file. It deliberately excludes local FFmpeg binaries and models. Verify a read-only mount and startup before publishing; never reuse a published tag or overwrite its assets. The preview is ad-hoc signed, not notarized.
 
 ## Reporting checks
 

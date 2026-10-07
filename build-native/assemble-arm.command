@@ -57,7 +57,7 @@ fi
 
 # ffmpeg fallback từ Resources (không tải lại)
 FFMPEG_SRC="$RESOURCES/Contents/Resources/PlaywrightBrowsers/ffmpeg-1011/ffmpeg-mac"
-if [[ -x "$FFMPEG_SRC" ]]; then
+if [[ "${MSM_BUNDLE_FFMPEG:-1}" == 1 && -x "$FFMPEG_SRC" ]]; then
     cp -p "$FFMPEG_SRC" "$APP_STAGING/Contents/Resources/ffmpeg/ffmpeg-mac"
     chmod +x "$APP_STAGING/Contents/Resources/ffmpeg/ffmpeg-mac"
     ln -sf "ffmpeg-mac" "$APP_STAGING/Contents/Resources/ffmpeg/ffmpeg"

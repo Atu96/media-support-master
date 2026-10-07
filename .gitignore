@@ -15,6 +15,7 @@
 !/Contents/Info.plist
 /docs/*
 !/docs/development/
+!/docs/releases/
 /build-native/out/
 /build-native/.test-out/
 /build-native/.module-cache/
