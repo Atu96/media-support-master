@@ -1,0 +1,9 @@
+# Trung — dòng ngắn kiểu short-form / phụ đề dọc ngang
+max_cps: 15.0
+min_duration: 0.8
+max_duration: 6.0
+min_gap: 0.0
+max_line_chars: 16
+max_block_chars: 32
+merge_gap: 0.5
+continuity_gap: 1.2

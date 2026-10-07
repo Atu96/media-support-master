@@ -1,0 +1,2 @@
+mecab-python3
+PyYAML>=6.0

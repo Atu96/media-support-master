@@ -1,0 +1,11 @@
+{
+  "data": [
+    {
+      "id": "task-fixture-001",
+      "status": "completed",
+      "resultUrls": [
+        "https://cdn.example.invalid/task-fixture-001.wav"
+      ]
+    }
+  ]
+}

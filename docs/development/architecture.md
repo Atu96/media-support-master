@@ -1,0 +1,26 @@
+# Architecture
+
+Media Support Master is a native AppKit/SwiftUI app. Source lives in `build-native/source/MediaSupportMac`.
+
+| Layer | Responsibility |
+|---|---|
+| App | Launch, preferences, localization, menus and coordination |
+| Presentation | Workspace, timeline, settings and user actions |
+| Domain | Models, layout/timing rules and provider contracts |
+| Infrastructure | AVFoundation, file I/O, Keychain, provider adapters and workflows |
+
+The subtitle timeline is the only timing editor. `SubtitleViewModel` owns subtitle/session state, `AVPreviewService` owns video playback, and `DubbingSessionModel` plus its playback coordinator own dubbing lifecycle.
+
+## Subtitle pipeline
+
+Verified word timing, adaptive pauses and cached waveform evidence feed the local cue planner. Optional semantic refinement returns boundary IDs, never rewritten words. Native Core Text measurements enforce layout; word retiming and conservative speech-edge refinement follow when evidence is valid.
+
+For non-Japanese text, local token/phrase context improves boundaries without requiring punctuation. Available macOS lexical analysis is used without requesting language assets. Japanese retains its existing tailoring. A word/transcript mismatch falls back to segment timing. Manual line breaks are intentional data.
+
+Changing line count or font size schedules cancellable work off the main actor. Only the newest result with a matching project/text/style snapshot can commit to undo history. It does not transcribe again or call an online model.
+
+## Providers and data
+
+Provider adapters own transport/schema, pure decoders validate fixtures, and session models coordinate jobs. Views do not call REST or read credential values directly. Translation writes only after all cue IDs are accounted for. Dubbing cache identity is independent of cue timing; explicit merges can preserve or combine valid audio locally.
+
+Support is an independent, click-only HTTPS link shared by About and the resource bar. It does not participate in job completion, billing, or shutdown. New-install language selection is tested independently and preserves valid existing choices.

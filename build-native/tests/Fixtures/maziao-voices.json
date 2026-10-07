@@ -1,0 +1,22 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "voice-vi-fixture",
+        "name": "Vietnamese Fixture",
+        "language": "vi-VN",
+        "gender": "female",
+        "modelId": "lingual_speech_v2",
+        "previewUrl": "https://cdn.example.invalid/voice-vi.mp3"
+      },
+      {
+        "id": "voice-ja-fixture",
+        "name": "Japanese Fixture",
+        "language": "ja-JP"
+      }
+    ],
+    "total": 2,
+    "limit": 100,
+    "offset": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "voices": [
+    {
+      "voice_id": "eleven-fixture-1",
+      "name": "Mina Fixture",
+      "category": "professional",
+      "labels": {
+        "gender": "female",
+        "language": "ko"
+      },
+      "preview_url": "https://cdn.example.invalid/mina.mp3",
+      "verified_languages": [
+        {
+          "language": "ko",
+          "model_id": "eleven_v3",
+          "locale": "ko-KR",
+          "preview_url": "https://cdn.example.invalid/mina-ko.mp3"
+        }
+      ]
+    }
+  ],
+  "has_more": true,
+  "total_count": 2,
+  "next_page_token": "page-2-fixture"
+}

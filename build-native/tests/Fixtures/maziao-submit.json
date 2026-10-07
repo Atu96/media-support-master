@@ -1,0 +1,8 @@
+{
+  "data": {
+    "taskId": "task-fixture-001",
+    "transactionId": "transaction-redacted",
+    "totalCost": 123,
+    "remainingCredits": 198642
+  }
+}

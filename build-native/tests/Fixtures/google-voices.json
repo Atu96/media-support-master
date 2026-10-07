@@ -1,0 +1,16 @@
+{
+  "voices": [
+    {
+      "languageCodes": ["vi-VN"],
+      "name": "vi-VN-Chirp3-HD-Leda",
+      "ssmlGender": "FEMALE",
+      "naturalSampleRateHertz": 24000
+    },
+    {
+      "languageCodes": ["en-GB"],
+      "name": "en-GB-Neural2-A",
+      "ssmlGender": "MALE",
+      "naturalSampleRateHertz": 24000
+    }
+  ]
+}

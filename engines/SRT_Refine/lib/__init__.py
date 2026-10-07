@@ -1,0 +1,1 @@
+# SRT_Refine — post-process Whisper SRT (no script)
