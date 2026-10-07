@@ -1,13 +1,13 @@
 #!/bin/bash
-# Create an Apple silicon preview DMG from the committed source.
+# Create an Apple silicon DMG from the committed source.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_ROOT="${APP_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 source "$APP_ROOT/scripts/common.sh"
 SOURCE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$CONTENTS_REF/Info.plist")"
-TAG="${1:-v$SOURCE_VERSION-preview.1}"
-[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]] || fail "Expected vX.Y.Z-preview.N"
-[[ "$TAG" == "v$SOURCE_VERSION-preview."* ]] || fail "Tag does not match app version $SOURCE_VERSION"
+TAG="${1:-v$SOURCE_VERSION}"
+[[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$ ]] || fail "Expected vX.Y.Z or vX.Y.Z-preview.N"
+[[ "$TAG" == "v$SOURCE_VERSION" || "$TAG" == "v$SOURCE_VERSION-preview."* ]] || fail "Tag does not match app version $SOURCE_VERSION"
 [[ -f "$APP_ROOT/docs/releases/${TAG#v}.md" ]] || fail "Write release notes before packaging."
 SOURCE_COMMIT="$(git -C "$APP_ROOT" rev-parse HEAD)"
 git -C "$APP_ROOT" diff --quiet HEAD -- Contents build-native/source scripts engines assets \

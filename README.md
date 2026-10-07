@@ -13,13 +13,13 @@ A Mac app for transcribing media, editing subtitles, translating text, and dubbi
 
 ## Availability
 
-This public repository contains development source for Apple silicon Macs. The app targets macOS 15 or later. Download [0.2.2 Preview 1 from GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v0.2.2-preview.1); see its notes for setup and known limits. Intel is not supported by that installer.
+This public repository contains source for Apple silicon Macs. The app targets macOS 15 or later. Download [1.0.0 from GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v1.0.0); see its notes for setup and known limits. Intel is not supported by that installer.
 
-The preview installer and local TEST bundles use ad-hoc signing; they are not Developer ID signed or notarized. A source build is not a certification that every provider, language, or media file has been tested live.
+The release installer and local TEST bundles use ad-hoc signing; they are not Developer ID signed or notarized. A source build is not a certification that every provider, language, or media file has been tested live.
 
 ## Quick start
 
-1. Download the arm64 DMG, open it, and drag the app into Applications; or build the TEST app using the instructions below. macOS may require first-launch approval in Privacy & Security because the preview is not notarized.
+1. Download the arm64 DMG, open it, and drag the app into Applications; or build the TEST app using the instructions below. macOS may require first-launch approval in Privacy & Security because the app is not notarized.
 2. Import a video/audio file or an existing SRT. Configure a provider key or download the offline model in Settings if you want to transcribe.
 3. Transcribe, review the cues, and choose a one- or two-line layout. Layout runs in the background.
 4. Edit, translate, or dub the cues you need.
@@ -29,7 +29,7 @@ A new installation starts in English. Upgrades preserve a valid saved language, 
 
 ## Limits and dependencies
 
-**0.2.2 Preview 1:** XML, spoken-language detection and Vietnamese/English/Korean/Chinese script alignment use integrated native tools. A Motion template is included, and signed tool updates are available in Settings. Japanese script alignment keeps its existing workflow; see [integrated tool notes](docs/development/integrated-tools.md).
+**1.0.0:** XML, spoken-language detection and Vietnamese/English/Korean/Chinese script alignment use integrated native tools. A Motion template is included, and signed tool updates are available in Settings. Japanese script alignment keeps its existing workflow; see [integrated tool notes](docs/development/integrated-tools.md).
 
 - Online providers require your own credentials and may charge for usage. Voice/model availability and quotas belong to the provider.
 - The offline model is downloaded separately (about 1.62 GB); it is not stored in Git or bundled with the app. The small ARM Whisper executable and its notices are included.

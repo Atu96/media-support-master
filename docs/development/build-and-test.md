@@ -30,9 +30,9 @@ Building the app does not install all legacy workflows. Existing wrappers can st
 
 The TEST bundle finds scripts relative to its checkout. Release bundles prefer their own `Contents/Resources/Runtime` scripts; `APP_ROOT` can explicitly override this. Legacy external tools remain separate dependencies.
 
-## Preview DMG
+## Release DMG
 
-Commit runtime changes, run the offline QA gate above, write the matching `docs/releases/X.Y.Z-preview.N.md`, then use `./build-native/export-release-app.command vX.Y.Z-preview.N` with the actual app version. It compiles the release app, bundles tracked runtime scripts/refine source and the Motion title (no environments or tests), signs locally, creates and verifies a DMG under `dist/release`, and writes a relative-filename SHA-256 file. It deliberately excludes local FFmpeg binaries and models. Verify a read-only mount and startup before publishing; never reuse a published tag or overwrite its assets. The preview is ad-hoc signed, not notarized. See [integrated tools](integrated-tools.md) for the current native paths and tool-feed maintenance.
+Commit runtime changes, run the offline QA gate above, write the matching `docs/releases/X.Y.Z.md`, then use `./build-native/export-release-app.command vX.Y.Z` with the actual app version. Preview tags use `vX.Y.Z-preview.N` and matching notes. It compiles the release app, bundles tracked runtime scripts/refine source and the Motion title (no environments, tests or maintainer signing helper), signs locally, creates and verifies a DMG under `dist/release`, and writes a relative-filename SHA-256 file. It deliberately excludes local FFmpeg binaries and models. Verify a read-only mount and startup before publishing; never reuse a published tag or overwrite its assets. Signing is ad-hoc, not notarized. See [integrated tools](integrated-tools.md) for the current native paths and tool-feed maintenance.
 
 ## Reporting checks
 

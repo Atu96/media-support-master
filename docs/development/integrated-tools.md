@@ -1,6 +1,6 @@
 # Integrated tools
 
-0.2.2 Preview 1 uses native FCPXML export, a bundled Motion template, native audio extraction, bundled Whisper language detection and native script alignment. The retained 0.2.1 installer predates these changes.
+1.0.0 uses native FCPXML export, a bundled Motion template, native audio extraction, bundled Whisper language detection and native script alignment. The retained 0.2.1 installer predates these changes.
 
 ## Runtime
 
