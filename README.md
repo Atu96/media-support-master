@@ -13,7 +13,7 @@ A Mac app for transcribing media, editing subtitles, translating text, and dubbi
 
 ## Availability
 
-This public repository contains source for Apple silicon Macs. The app targets macOS 15 or later. Download [1.0.0 from GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v1.0.0); see its notes for setup and known limits. Intel is not supported by that installer.
+This public repository contains source for Apple silicon Macs. The app targets macOS 15 or later. Download [1.0.1 from GitHub Releases](https://github.com/Atu96/media-support-master/releases/tag/v1.0.1); see its notes for setup and known limits. Intel is not supported by that installer.
 
 The release installer and local TEST bundles use ad-hoc signing; they are not Developer ID signed or notarized. A source build is not a certification that every provider, language, or media file has been tested live.
 
@@ -33,7 +33,7 @@ A new installation starts in English. Upgrades preserve a valid saved language, 
 
 - Online providers require your own credentials and may charge for usage. Voice/model availability and quotas belong to the provider.
 - The offline model is downloaded separately (about 1.62 GB); it is not stored in Git or bundled with the app. The small ARM Whisper executable and its notices are included.
-- Native XML, language detection and Vietnamese/English/Korean/Chinese script alignment do not require Python or FFmpeg for media readable by macOS. Japanese script alignment and optional legacy workflows still use external tools under `~/Documents/Tools`, including `Whisper_Native`. FFmpeg/Python runtimes are not bundled; the installer does not install or rebuild the legacy environment.
+- **1.0.1 includes Japanese MeCab/UniDic alignment**, preserving the original algorithm; all active subtitle workflows use integrated tools for media readable by macOS. No separate Python/Homebrew/FFmpeg installation is required. The retained 1.0.0 installer predates this migration and has a legacy Japanese dependency.
 - FCPXML uses the bundled Motion title **Phu de nen den**. The app installs it when missing and preserves existing/user-modified templates. Native and legacy XML converters are compared by regression fixtures.
 - Subtitle boundaries use local token/phrase rules and available macOS language analysis. They can improve unpunctuated text, but do not guarantee perfect sentence understanding. Japanese retains its separate existing layout path.
 - SRT imports do not contain per-word audio timestamps. Reformatting an existing project uses its text and cue gaps; verified word timestamps are used when supplied during transcription.

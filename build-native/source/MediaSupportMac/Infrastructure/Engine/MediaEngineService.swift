@@ -16,7 +16,15 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
     }
 
     func runCheckEngines() async {
-        await runner.run(ToolsBridge.checkEnginesJob())
+        await runner.runTask(title:"Kiểm tra công cụ tích hợp") {
+            _=try NativeWhisperRuntime.engineURL()
+            self.runner.appendLog("✓ Whisper trong ứng dụng")
+            if let helper=JapaneseScriptAlignmentService.helperURL {
+                _=try await NativeWhisperProcess.run(executable:helper,arguments:["--self-test"],timeout:20,progress:{_ in})
+                self.runner.appendLog("✓ Bộ khớp tiếng Nhật trong ứng dụng")
+            }
+            for issue in AppPaths.engineStatus().issues { self.runner.appendLog("ℹ️ \(issue)") }
+        }
     }
 
     func runWhisperSRT(for mediaURL: URL, sourceLang: String) async {
@@ -63,10 +71,12 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
         language: ScriptAlignmentLanguage,
         outputURL: URL
     ) async {
-        // Keep the established Japanese MeCab alignment path.
         if language == .japanese {
-            await runner.run(ToolsBridge.scriptAlignSRTJob(for:mediaURL,scriptFile:scriptFile,
-                                                          language:language,outputURL:outputURL))
+            await runner.runTask(title:"Align kịch bản — \(mediaURL.lastPathComponent)") {
+                try await JapaneseScriptAlignmentService.align(media:mediaURL,scriptFile:scriptFile,output:outputURL) { line in
+                    Task { @MainActor in self.runner.appendLog(line) }
+                }
+            }
             return
         }
         await runner.runTask(title:"Align kịch bản — \(mediaURL.lastPathComponent)") {
@@ -132,7 +142,10 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
     }
 
     func runBurnSRTVideo(video: URL, srt: URL, output: URL, style: SubtitleBurnStyle) async {
-        await runner.run(ToolsBridge.burnSRTVideoJob(video: video, srt: srt, output: output, style: style))
+        await runner.runTask(title:"Xuất video phụ đề — \(video.lastPathComponent)") {
+            let text=try String(contentsOf:srt,encoding:.utf8)
+            try await SubtitleVideoExporter.export(videoURL:video,outputURL:output,segments:SRTDocument.parseSegments(text),style:style)
+        }
     }
 
     func runExportSRTFCPXML(srt: URL, output: URL, style: SubtitleBurnStyle) async {

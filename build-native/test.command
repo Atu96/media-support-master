@@ -122,6 +122,12 @@ NATIVE_XML_FIXTURES="$(mktemp -d /private/tmp/msm-native-xml.XXXXXX)"
 "$OUT_DIR/NativeIntegratedToolsTests" "$NATIVE_XML_FIXTURES"
 python3 "$SCRIPT_DIR/tests/test_native_fcpxml.py" "$NATIVE_XML_FIXTURES" "$SCRIPT_DIR/../scripts/lib/convert_srt_fcpxml.py"
 rm -rf "$NATIVE_XML_FIXTURES"
+if [[ -n "${MSM_JAPANESE_LEGACY_PYTHON:-}" && -n "${MSM_JAPANESE_LEGACY_DICTIONARY:-}" ]]; then
+    python3 "$SCRIPT_DIR/tests/test_japanese_helper.py" \
+        "$SCRIPT_DIR/../_work/japanese-tools/JapaneseTools/japanese-helper" \
+        "$SCRIPT_DIR/../engines/JapaneseAlignment/legacy_core.py" \
+        "$MSM_JAPANESE_LEGACY_PYTHON" "$MSM_JAPANESE_LEGACY_DICTIONARY"
+fi
 
 # Actual shared native renderer, not the Python fallback. No key/network needed.
 run_swiftc -Onone -target "arm64-apple-macos${MIN_MACOS}" -sdk "$SDK" \

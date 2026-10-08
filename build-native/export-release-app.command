@@ -26,7 +26,7 @@ APP="$STAGING/$APP_FOLDER"
 RUNTIME="$APP/Contents/Resources/Runtime"
 mkdir -p "$RUNTIME"
 while IFS= read -r -d '' relative; do
-    case "$relative" in */tests/*|*/run_tests.sh|scripts/lib/macos_sdk.sh|scripts/sign-tools-manifest.swift) continue ;; esac
+    case "$relative" in */tests/*|*/run_tests.sh|scripts/lib/macos_sdk.sh|scripts/sign-tools-manifest.swift|scripts/lib/prepare_japanese_helper.py) continue ;; esac
     mkdir -p "$RUNTIME/$(dirname "$relative")"
     cp -p "$APP_ROOT/$relative" "$RUNTIME/$relative"
 done < <(git -C "$APP_ROOT" ls-files -z -- scripts engines/SRT_Refine)

@@ -10,7 +10,12 @@ enum NativeIntegratedToolsSmoke {
             throw CocoaError(.fileNoSuchFile)
         }
         let output=directory.appendingPathComponent("aligned.srt")
-        try await NativeScriptAlignmentService.align(media:media,scriptFile:script,output:output,language:"en") { print($0) }
+        let code=ProcessInfo.processInfo.environment["MSM_SMOKE_LANGUAGE"] ?? "en"
+        if code=="ja" {
+            try await JapaneseScriptAlignmentService.align(media:media,scriptFile:script,output:output) { print($0) }
+        } else {
+            try await NativeScriptAlignmentService.align(media:media,scriptFile:script,output:output,language:code) { print($0) }
+        }
         let original=try String(contentsOf:script,encoding:.utf8)
         let result=try String(contentsOf:output,encoding:.utf8)
         let segments=SRTDocument.parseSegments(result)
@@ -18,7 +23,7 @@ enum NativeIntegratedToolsSmoke {
             throw NativeScriptAlignmentError.insufficientEvidence
         }
         let language=try await NativeWhisperRuntime.detectLanguage(media:media) { print($0) }
-        guard language.language=="en" else { throw NativeScriptAlignmentError.insufficientEvidence }
+        guard language.language==code else { throw NativeScriptAlignmentError.insufficientEvidence }
         let xml=try NativeFCPXMLExporter.render(segments:segments,name:"synthetic-smoke",style:SubtitleBurnStyle(),
                                                templateURL:MotionTemplateInstaller.resolveOrInstall())
         try xml.write(to:directory.appendingPathComponent("aligned.fcpxml"),atomically:true,encoding:.utf8)

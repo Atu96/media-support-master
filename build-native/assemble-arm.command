@@ -30,6 +30,8 @@ mkdir -p "$APP_STAGING/Contents/Resources/ffmpeg"
 mkdir -p "$APP_STAGING/Contents/Resources/offline-whisper"
 
 cp "$CONTENTS_REF/Info.plist" "$APP_STAGING/Contents/Info.plist"
+JAPANESE_TOOLS="$(python3 "$APP_ROOT/scripts/lib/prepare_japanese_helper.py")"
+cp -R "$JAPANESE_TOOLS" "$APP_STAGING/Contents/Resources/JapaneseTools"
 cp -p "$BUILD_NATIVE/out/MediaSupportMac" "$APP_STAGING/Contents/MacOS/MediaSupportMac"
 chmod +x "$APP_STAGING/Contents/MacOS/MediaSupportMac"
 verify_arm_binary "$APP_STAGING/Contents/MacOS/MediaSupportMac" "Bundle binary"
