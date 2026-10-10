@@ -74,6 +74,8 @@ engines/SRT_Refine/venv/bin/python -m pip install -r engines/SRT_Refine/requirem
 
 See [build and test notes](docs/development/build-and-test.md) and [architecture](docs/development/architecture.md). Please keep changes scoped and describe the behavior and checks in contributions.
 
+The current source adds bounded cloud dubbing, reusable speech clips, original ElevenLabs MP3 caching and Maziao task recovery. These changes require a new source/TEST build and are not included in the existing 1.0.1 download. See [dubbing notes](docs/development/dubbing.md) for behavior and verification limits.
+
 ## License
 
 An open-source license has not been selected for this project's own code. Public access to the repository does not grant a new open-source license. Third-party components retain their own licenses; see [notices](THIRD_PARTY_NOTICES.md).

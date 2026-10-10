@@ -117,6 +117,12 @@ enum MediaSupportCoreTests {
         run("Catalog giọng nhóm và tìm theo tên quốc gia", testDubbingVoiceCatalogGrouping)
         run("Google và ElevenLabs decode catalog giọng phân trang", testCloudVoiceCatalogDecoders)
         run("Cache DUB đo dung lượng thật và không đếm đôi hard-link", testDubbingCacheUsage)
+        run("Cache giọng tái dùng qua ID/xuống dòng, tách audio ghép và xóa", testDubbingSpeechReuse)
+        run("ElevenLabs gửi đúng tốc độ, giữ chữ và mô hình", testElevenLabsGenerationSpeed)
+        await runAsync("Maziao phục hồi receipt sau lỗi/hủy/restart không submit lại", testMaziaoTaskRecovery)
+        await runAsync("Hàng đợi DUB giới hạn hai việc và dọn khi hủy/lỗi", testDubbingRenderQueue)
+        await runAsync("MP3 gốc mở/phát/ghép được và không giải nén cache", testDubbingCompressedCache)
+        await runAsync("Cache duration giữ hard-link và bỏ metadata khi tệp đổi", testDubbingDurationCache)
         await runAsync("Gộp cue giữ DUB phía sau và ghép audio cục bộ", testDubbingCueMergePreservation)
         run("Maziao fixture giải mã account, voice và submit ổn định", testMaziaoResponseFixtures)
         run("Maziao fixture giữ trạng thái pending/completed và URL audio", testMaziaoTaskStatusFixtures)
@@ -287,10 +293,10 @@ enum MediaSupportCoreTests {
     }
 
     private static func expect(
-        _ condition: @autoclosure () -> Bool,
+        _ condition: @autoclosure () throws -> Bool,
         _ message: String
     ) throws {
-        guard condition() else {
+        guard try condition() else {
             throw TestFailure(description: message)
         }
     }
@@ -2549,6 +2555,195 @@ enum MediaSupportCoreTests {
         } catch {
             // Expected: transport schema is incomplete.
         }
+    }
+
+    private static func testDubbingSpeechReuse() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = DubbingCacheStore(rootURL: directory)
+        try store.prepare()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let original = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 2, text: "Xin chào\nthế giới")
+        let moved = SRTSegment(id: 9, index: 9, timing: "", startSeconds: 10, endSeconds: 12, text: "Xin chào thế giới")
+        func fingerprint(_ cue: SRTSegment) -> String {
+            DubbingFingerprint.make(cue: cue, localeIdentifier: "vi-VN", voiceIdentifier: "v", rate: 0.5)
+        }
+        func content(_ cue: SRTSegment) -> String {
+            DubbingFingerprint.speechContent(cue: cue, localeIdentifier: "vi-VN", voiceIdentifier: "v",
+                rate: 0.5, provider: .appleOffline, modelIdentifier: "apple-system")
+        }
+        try expect(content(original) == content(moved), "ID/xuống dòng không được làm lại TTS")
+        try expect(fingerprint(original) != fingerprint(moved), "composite identity phải riêng từng cue")
+        let rewrapped = SRTSegment(id: original.id, index: original.index, timing: original.timing,
+                                   startSeconds: original.startSeconds, endSeconds: original.endSeconds, text: moved.text)
+        try expect(fingerprint(original) == fingerprint(rewrapped), "1/2 dòng phải giữ cache")
+        try Data(repeating: 1, count: 4096).write(to: store.clipURL(for: fingerprint(original)))
+        try store.registerSpeechReuse(content: content(original), fingerprint: fingerprint(original))
+        let alias = try store.reuseSpeech(content: content(moved), fingerprint: fingerprint(moved))
+        try expect(alias != nil && (try store.usage()).storedFileCount == 1, "reuse phải hard-link không nhân dữ liệu")
+        try store.blockReuse(for: fingerprint(moved))
+        store.removeClip(for: fingerprint(moved))
+        try expect(try store.reuseSpeech(content: content(moved), fingerprint: fingerprint(moved)) == nil,
+                   "xóa không được tự hồi sinh audio")
+        let composite = String(repeating: "a", count: 16)
+        try Data([1]).write(to: store.mergedClipURL(for: composite))
+        try store.registerSpeechReuse(content: "merged", fingerprint: composite)
+        try expect(try store.reuseSpeech(content: "merged", fingerprint: String(repeating: "b", count: 16)) == nil,
+                   "audio ghép có gap không được dùng làm giọng thuần")
+        let old = DubbingFingerprint.previousContent(cue: original, localeIdentifier: "vi-VN",
+            voiceIdentifier: "v", rate: 0.5, provider: .appleOffline, modelIdentifier: "apple-system")
+        try Data([3]).write(to: store.clipURL(for: old))
+        let migration = try store.migrateClip(from: old, to: String(repeating: "c", count: 16))
+        try expect(migration != nil && FileManager.default.fileExists(atPath: store.clipURL(for: old).path),
+                   "migration phải giữ cache cũ để rollback")
+        try expect(DubbingFingerprint.previousContent(cue: original, localeIdentifier: "vi-VN", voiceIdentifier: "v",
+            rate: 0.6, provider: .elevenLabs, modelIdentifier: "eleven_v3").isEmpty,
+                   "Eleven speed cũ bị bỏ qua không được migrate sang giọng mới")
+    }
+
+    private static func testElevenLabsGenerationSpeed() throws {
+        for (rate, expected) in [(Float(0.5), 1.0), (0.38, 0.76), (0.62, 1.2)] {
+            var request = maziaoRequest(1, text: "名前と地名をそのまま読む。")
+            request = .init(cueID: 1, text: request.text, localeIdentifier: "ja-JP", voiceIdentifier: "voice",
+                            rate: rate, outputURL: request.outputURL, provider: .elevenLabs, modelIdentifier: "eleven_v3")
+            let body = try JSONSerialization.jsonObject(with: ElevenLabsRequestEncoder.body(request)) as! [String: Any]
+            let settings = body["voice_settings"] as! [String: Any]
+            try expect(abs((settings["speed"] as! Double) - expected) < 0.001, "speed provider sai")
+            try expect(body["text"] as? String == request.text && body["language_code"] as? String == "ja",
+                       "encoder không được sửa chữ/ngôn ngữ")
+        }
+    }
+
+    @MainActor
+    private static func testMaziaoTaskRecovery() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let journal = MaziaoTaskJournal(rootURL: directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let account = MaziaoTaskJournal.digest(Data("test-key".utf8))
+        var submits = 0
+        var resumes = 0
+        do {
+            _ = try await MaziaoTaskRecovery.resolve(journal: journal, account: account, parts: ["a", "b"],
+                characterCount: 4_000, submit: {
+                submits += 1
+                return "test-receipt"
+            }, wait: { _ in throw URLError(.timedOut) })
+            throw TestFailure(description: "fake timeout không đến caller")
+        } catch is URLError { }
+        // A new store instance simulates relaunch; recover a short/partial selection in original order.
+        let fresh = MaziaoTaskJournal(rootURL: directory)
+        let urls = try await MaziaoTaskRecovery.resolve(journal: fresh, account: account, parts: ["b"],
+            onResume: { resumes += 1 }, submit: {
+            submits += 1
+            return "duplicate"
+        }, wait: { receipt in
+            try expect(receipt.taskID == "test-receipt", "restart không giữ đúng task")
+            try expect(receipt.characterCount == 4_000, "resume phần ngắn phải giữ timeout nhóm gốc")
+            return [URL(string: "https://audio.invalid/a")!, URL(string: "https://audio.invalid/b")!]
+        })
+        try expect(submits == 1 && resumes == 1 && urls[0].lastPathComponent == "b",
+                   "resume phải không submit, báo stage và giữ vị trí part")
+        try expect(try fresh.matching(account: "other-key", parts: ["b"]) == nil, "không trộn tài khoản")
+        try expect(try fresh.matching(account: account, parts: ["changed-text"]) == nil, "không trộn nội dung")
+        do {
+            _ = try await MaziaoTaskRecovery.resolve(journal: fresh, account: account, parts: ["a"],
+                submit: { "duplicate" }, wait: { _ in throw CancellationError() })
+        } catch is CancellationError { }
+        try expect(try fresh.matching(account: account, parts: ["a"]) != nil, "hủy phải giữ receipt")
+        let receipt = try fresh.matching(account: account, parts: ["a"])!
+        try expect(receipt.indices(for: ["a", "a"]) == nil, "không gán một tệp cho hai parts khác nhau")
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        let stored = String(decoding: try Data(contentsOf: files[0]), as: UTF8.self)
+        try expect(!stored.contains("test-key") && !stored.contains("https:"), "journal không được chứa key/URL")
+        try fresh.remove(receipt)
+        try expect(try fresh.matching(account: account, parts: ["a"]) == nil, "commit xong phải gỡ receipt")
+        try Data("broken".utf8).write(to: directory.appendingPathComponent("corrupt.json"))
+        do {
+            _ = try fresh.matching(account: account, parts: ["a"])
+            throw TestFailure(description: "journal hỏng không được âm thầm gửi lại")
+        } catch is DecodingError { }
+    }
+
+    @MainActor
+    private static func testDubbingRenderQueue() async throws {
+        var active = 0
+        var peak = 0
+        var finished = Set<Int>()
+        try await DubbingRenderQueue.run(count: 7, limit: 99, operation: { index in
+            active += 1
+            peak = max(peak, active)
+            defer { active -= 1 }
+            try await Task.sleep(for: .milliseconds(index.isMultiple(of: 2) ? 8 : 2))
+        }, completed: { finished.insert($0) })
+        try expect(peak == 2 && active == 0 && finished.count == 7, "queue phải giới hạn hai, không mất kết quả")
+        var started = 0
+        do {
+            try await DubbingRenderQueue.run(count: 9, operation: { index in
+                started += 1
+                active += 1
+                defer { active -= 1 }
+                if index == 0 { throw URLError(.badServerResponse) }
+                try await Task.sleep(for: .seconds(5))
+            })
+            throw TestFailure(description: "queue nuốt lỗi")
+        } catch is URLError { }
+        try expect(active == 0 && started <= 2, "lỗi phải hủy worker và không gửi cue tiếp")
+        let task = Task {
+            try await DubbingRenderQueue.run(count: 9, operation: { _ in
+                active += 1
+                defer { active -= 1 }
+                try await Task.sleep(for: .seconds(5))
+            })
+        }
+        try await Task.sleep(for: .milliseconds(10))
+        task.cancel()
+        do { try await task.value; throw TestFailure(description: "queue không hủy") }
+        catch is CancellationError { }
+        try expect(active == 0, "hủy phải đợi worker thoát")
+    }
+
+    private static func testDubbingDurationCache() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("clip.caf")
+        let alias = directory.appendingPathComponent("alias.caf")
+        let cache = DubbingAudioDurationCache()
+        try writeDubbingMergeTone(to: file, duration: 0.2, frequency: 330)
+        try FileManager.default.linkItem(at: file, to: alias)
+        let first = await cache.duration(at: file)
+        let reused = await cache.duration(at: alias)
+        try expect(abs(first - 0.2) < 0.02 && first == reused, "duration alias sai")
+        try writeDubbingMergeTone(to: file, duration: 0.9, frequency: 440)
+        let changed = await cache.duration(at: alias)
+        try expect(abs(changed - 0.9) < 0.02, "metadata cũ không được giữ khi audio thay đổi")
+        try FileManager.default.removeItem(at: file)
+        let missing = await cache.duration(at: file)
+        try expect(missing == 0, "tệp đã xóa không được trả duration cũ")
+    }
+
+    private static func testDubbingCompressedCache() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = DubbingCacheStore(rootURL: directory)
+        try store.prepare()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let data = try fixtureData("dubbing-tone.mp3")
+        try await DubbingAudioTranscoder.writeCompressedMP3(data, to: store.clipURL(for: "tone"))
+        guard let url = store.existingClipURL(for: "tone") else { throw TestFailure(description: "MP3 mất cache") }
+        try expect(url.pathExtension == "mp3" && (try Data(contentsOf: url)) == data, "phải giữ byte MP3 gốc")
+        let player = try AVAudioPlayer(contentsOf: url)
+        try expect(player.prepareToPlay() && player.duration > 0.3, "MP3 không chuẩn bị phát được")
+        let merged = directory.appendingPathComponent("mixed.m4a")
+        _ = try await DubbingAudioMergeService.merge(clips: [.init(audioURL: url, startOffset: 0, playbackRate: 1)],
+                                                     outputURL: merged)
+        let duration = await DubbingCacheStore.audioDuration(at: merged)
+        try expect(duration > 0.3, "MP3 không ghép/export được")
+        try expect((try store.usage()).clipCount == 2, "usage bỏ sót MP3")
+        do {
+            try await DubbingAudioTranscoder.writeCompressedMP3(Data([0, 1, 2]), to: store.clipURL(for: "tone"))
+            throw TestFailure(description: "accept MP3 lỗi")
+        } catch is TestFailure { throw TestFailure(description: "accept MP3 lỗi") }
+        catch { }
+        try expect((try Data(contentsOf: url)) == data, "lỗi không được phá cache tốt")
     }
 
     private static func fixtureData(_ name: String) throws -> Data {

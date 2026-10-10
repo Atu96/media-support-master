@@ -155,18 +155,14 @@ final class ElevenLabsDubbingService: DubbingSpeechSynthesizing {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
         urlRequest.timeoutInterval = 90
-        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
-            "text": request.text,
-            "model_id": request.modelIdentifier,
-            "language_code": Locale(identifier: request.localeIdentifier).language.languageCode?.identifier ?? "vi",
-        ])
+        urlRequest.httpBody = try ElevenLabsRequestEncoder.body(request)
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw DubbingError.providerResponse(Self.errorMessage(from: data, fallback: response))
         }
         guard !data.isEmpty else { throw DubbingError.invalidAudioBuffer }
-        try await DubbingAudioTranscoder.writeCloudAudio(data, sourceExtension: "mp3", to: request.outputURL)
+        try await DubbingAudioTranscoder.writeCompressedMP3(data, to: request.outputURL)
     }
 
     func stop() {}

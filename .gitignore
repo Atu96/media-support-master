@@ -42,6 +42,7 @@
 *.caf
 *.wav
 *.mp3
+!/build-native/tests/Fixtures/dubbing-tone.mp3
 *.m4a
 *.mp4
 *.mov

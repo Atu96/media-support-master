@@ -554,6 +554,7 @@
 "Đang chuẩn bị %d câu chưa có giọng…" = "음성이 없는 자막 %d개를 준비하는 중…";
 "Đang tạo câu %d/%d bằng %@…" = "%d/%d번째 자막을 %@로 생성하는 중…";
 "Nhóm %d/%d · Đang gửi %d câu tới Maziao…" = "묶음 %d/%d · 자막 %d개를 Maziao로 보내는 중…";
+"Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…" = "묶음 %d/%d · 기존 Maziao 작업을 이어가는 중…";
 "đang xếp hàng" = "대기 중";
 "đang xử lý" = "처리 중";
 "đang lưu kết quả" = "결과 저장 중";

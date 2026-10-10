@@ -554,6 +554,7 @@
 "Đang chuẩn bị %d câu chưa có giọng…" = "音声未生成の字幕%d件を準備中…";
 "Đang tạo câu %d/%d bằng %@…" = "%d/%d件目を%@で生成中…";
 "Nhóm %d/%d · Đang gửi %d câu tới Maziao…" = "バッチ%d/%d · 字幕%d件をMaziaoへ送信中…";
+"Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…" = "バッチ%d/%d · 送信済みのMaziaoタスクを再開中…";
 "đang xếp hàng" = "待機中";
 "đang xử lý" = "処理中";
 "đang lưu kết quả" = "結果を保存中";

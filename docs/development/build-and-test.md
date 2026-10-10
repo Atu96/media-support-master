@@ -26,9 +26,9 @@ The build root is derived from the checkout, with an optional `APP_ROOT` overrid
 
 ## Runtime dependencies
 
-Building the app does not install all legacy workflows. Existing wrappers can still need external Whisper/FFmpeg/media tools. Diagnostics currently check that legacy environment, so a new checkout can build while reporting missing runtime tools. Offline native transcription uses the included small Whisper engine and a separately downloaded model.
+Active subtitle workflows use the integrated native tools, including the packaged Japanese helper from 1.0.1. Native diagnostics report those tools. Offline transcription and script alignment use the included Whisper engine and a separately selected/downloaded model. Retained legacy wrappers can still need external tools when invoked directly; see [integrated tools](integrated-tools.md).
 
-The TEST bundle finds scripts relative to its checkout. Release bundles prefer their own `Contents/Resources/Runtime` scripts; `APP_ROOT` can explicitly override this. Legacy external tools remain separate dependencies.
+The TEST bundle finds retained scripts relative to its checkout. Release bundles prefer their own `Contents/Resources/Runtime` scripts; `APP_ROOT` can explicitly override this.
 
 ## Release DMG
 
@@ -39,3 +39,15 @@ Commit runtime changes, run the offline QA gate above, write the matching `docs/
 Passing source/fixture tests is not the same as testing real media, a paid provider, UI interaction, or installer notarization. Describe the exact tests, tool versions, media and provider scope. Do not put personal logs, keys, project paths or media into the repository.
 
 Local agent/checkpoint/archive notes remain outside Git. A fresh clone uses these developer notes and the actual code/tests as its guide.
+
+## Dubbing session smoke
+
+After building a TEST bundle, run the following with a new temporary directory:
+
+```sh
+mkdir -p /private/tmp/msm-dubbing-smoke
+MSM_DUBBING_OPTIMIZATION_SMOKE_DIR=/private/tmp/msm-dubbing-smoke \
+  ./dist/test/Media_Support_Master_TEST.app/Contents/MacOS/MediaSupportMac
+```
+
+This TEST-only path exits after exercising the actual `DubbingSessionModel` with a fake speech provider and isolated preferences/cache. It checks two-worker generation, identical-text deduplication (including after explicit deletion), ID/line-break reuse, and cancelling immediately before a new render. It reads no provider credentials and makes no network requests. Release bundles ignore this environment variable. The synthetic MP3 fixture used by core QA is checked in; no local encoder is required to run it.

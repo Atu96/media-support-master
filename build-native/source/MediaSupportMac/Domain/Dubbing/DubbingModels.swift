@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 enum DubbingSpeechProvider: String, CaseIterable, Identifiable, Sendable {
     case googleCloud
@@ -460,6 +461,7 @@ enum DubbingRemoteTaskStage: Sendable, Equatable {
 
 enum DubbingRenderProgress: Sendable, Equatable {
     case submitting(total: Int)
+    case resuming
     case waiting(stage: DubbingRemoteTaskStage, elapsedSeconds: Int, timeoutSeconds: Int)
     case downloading(current: Int, total: Int)
     case transcoding(current: Int, total: Int)
@@ -471,7 +473,7 @@ typealias DubbingRenderProgressHandler = @Sendable (DubbingRenderProgress) async
 /// Optional provider capability; session still owns cue/cache/progress state.
 @MainActor
 protocol DubbingSpeechBatchSynthesizing: DubbingSpeechSynthesizing {
-    func renderBatches(for requests: [DubbingSpeechRequest]) throws -> [[DubbingSpeechRequest]]
+    func renderBatches(for requests: [DubbingSpeechRequest]) async throws -> [[DubbingSpeechRequest]]
     func renderBatch(
         _ requests: [DubbingSpeechRequest],
         progress: DubbingRenderProgressHandler?
@@ -646,7 +648,7 @@ enum DubbingPlaybackMath {
 }
 
 enum DubbingFingerprint {
-    static let schema = "msm-dub-v2-content"
+    static let schema = "msm-dub-v3-spoken"
     private static let legacySchema = "msm-dub-v1"
 
     static func make(
@@ -665,9 +667,32 @@ enum DubbingFingerprint {
             String(format: "%.4f", rate),
             provider.rawValue,
             modelIdentifier,
-            cue.text,
+            spokenText(cue.text),
         ].joined(separator: "\u{001F}")
         return fnv1a64(payload)
+    }
+
+    static func spokenText(_ text: String) -> String {
+        text.replacingOccurrences(of: "\n", with: " ")
+    }
+
+    /// Only independently generated speech may be indexed with this ID-free key.
+    /// Composite audio stays cue-specific because gaps/overlaps are part of that audio.
+    static func speechContent(cue: SRTSegment, localeIdentifier: String, voiceIdentifier: String?,
+                              rate: Float, provider: DubbingSpeechProvider, modelIdentifier: String) -> String {
+        let fields = [schema, localeIdentifier, voiceIdentifier ?? "system", String(format: "%.4f", rate),
+                      provider.rawValue, modelIdentifier, spokenText(cue.text)]
+        let data = (try? JSONEncoder().encode(fields)) ?? Data()
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func previousContent(cue: SRTSegment, localeIdentifier: String, voiceIdentifier: String?,
+                                rate: Float, provider: DubbingSpeechProvider, modelIdentifier: String) -> String {
+        // Old ElevenLabs ignored generation speed; only its natural-speed audio is compatible.
+        guard provider != .elevenLabs || abs(rate - 0.5) < 0.0001 else { return "" }
+        return fnv1a64(["msm-dub-v2-content", String(cue.id), localeIdentifier, voiceIdentifier ?? "system",
+                       String(format: "%.4f", rate), provider.rawValue, modelIdentifier, cue.text]
+            .joined(separator: "\u{001F}"))
     }
 
     /// Finds clips created before cue timing became independent from TTS cache identity.

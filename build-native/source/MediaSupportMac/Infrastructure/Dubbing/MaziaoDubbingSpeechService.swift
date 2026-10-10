@@ -5,7 +5,23 @@ struct MaziaoAccountSnapshot: Codable, Equatable, Sendable {
     let updatedAt: Date
 }
 
+@MainActor
 enum MaziaoAPIClient {
+    static let journal = MaziaoTaskJournal()
+    private static var isResolvingTask = false
+
+    static func accountDigest() async throws -> String {
+        let key = await DubbingCredentialAccess.shared.loadMaziao()
+        guard !key.isEmpty else { throw DubbingError.missingCredential("Maziao") }
+        return MaziaoTaskJournal.digest(Data(key.utf8))
+    }
+
+    static func finish(_ requests: [DubbingSpeechRequest]) async throws {
+        if let receipt = try journal.matching(account: try await accountDigest(),
+                                             parts: requests.map(MaziaoTaskJournal.partDigest)) {
+            try journal.remove(receipt)
+        }
+    }
     private static let baseURL = URL(string: "https://app.maziao.com")!
     private static let apiSession: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
@@ -99,39 +115,32 @@ enum MaziaoAPIClient {
         return (data, audioFileExtension(url: resolvedURL, mimeType: http.mimeType))
     }
 
-    static func synthesize(
+    static func singleAudioURLs(
         _ request: DubbingSpeechRequest,
         progress: DubbingRenderProgressHandler? = nil
-    ) async throws -> Data {
+    ) async throws -> [URL] {
         guard let voiceID = request.voiceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
               !voiceID.isEmpty else {
             throw DubbingError.missingVoiceIdentifier("Maziao")
         }
         let speed = min(1.5, max(0.5, Double(request.rate / 0.5)))
-        let body = try MaziaoRequestEncoder.submitBody(
-            text: request.text,
-            voiceID: voiceID,
-            modelID: request.modelIdentifier,
-            speed: speed
-        )
         let urls = try await submitAndWait(
-            body: body,
-            expectedCount: 1,
+            body: { try MaziaoRequestEncoder.submitBody(text: request.text, voiceID: voiceID,
+                                                       modelID: request.modelIdentifier, speed: speed) },
+            requests: [request],
             characterCount: request.text.count,
             progress: progress
         )
-        await progress?(.downloading(current: 1, total: 1))
-        return try await audio(from: urls[0])
+        return urls
     }
 
     static func batchAudioURLs(
         _ requests: [DubbingSpeechRequest],
         progress: DubbingRenderProgressHandler? = nil
     ) async throws -> [URL] {
-        let body = try MaziaoRequestEncoder.batchBody(requests)
         return try await submitAndWait(
-            body: body,
-            expectedCount: requests.count,
+            body: { try MaziaoRequestEncoder.batchBody(requests) },
+            requests: requests,
             characterCount: requests.reduce(0) { $0 + $1.text.count },
             progress: progress
         )
@@ -147,27 +156,55 @@ enum MaziaoAPIClient {
         return audio
     }
 
+    static func audioFile(from url: URL) async throws -> URL {
+        try Task.checkCancellation()
+        let (file, response) = try await audioSession.download(from: url)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            defer { try? FileManager.default.removeItem(at: file) }
+            let handle = try FileHandle(forReadingFrom: file)
+            defer { try? handle.close() }
+            let data = try handle.read(upToCount: 65_536) ?? Data()
+            throw DubbingError.providerResponse(errorMessage(from: data, response: response, operation: .resultAudio))
+        }
+        return file
+    }
+
     private static func submitAndWait(
-        body: Data,
-        expectedCount: Int,
+        body: () throws -> Data,
+        requests: [DubbingSpeechRequest],
         characterCount: Int,
         progress: DubbingRenderProgressHandler?
     ) async throws -> [URL] {
-        try Task.checkCancellation()
-        await progress?(.submitting(total: expectedCount))
-        let submitData = try await send(
-            method: "POST",
-            url: baseURL.appendingPathComponent("api/tts/submit"),
-            operation: .submit,
-            body: body
+        guard !isResolvingTask else { throw DubbingError.speechTimedOut }
+        isResolvingTask = true
+        defer { isResolvingTask = false }
+        let account = try await accountDigest()
+        return try await MaziaoTaskRecovery.resolve(
+            journal: journal, account: account, parts: requests.map(MaziaoTaskJournal.partDigest),
+            characterCount: characterCount, onResume: { await progress?(.resuming) },
+            submit: {
+                await progress?(.submitting(total: requests.count))
+                let data = try await send(method: "POST", url: baseURL.appendingPathComponent("api/tts/submit"),
+                                          operation: .submit, body: try body())
+                let submit = try MaziaoResponseDecoder.submitReceipt(from: data)
+                if let credits = submit.remainingCredits {
+                    ProviderUsageStore.saveMaziao(.init(remainingCredits: max(0, credits), updatedAt: Date()))
+                }
+                return submit.taskID
+            }, wait: { receipt in
+                try await waitForTask(receipt, characterCount: characterCount, progress: progress)
+            }
         )
-        let submit = try MaziaoResponseDecoder.submitReceipt(from: submitData)
-        if let credits = submit.remainingCredits {
-            ProviderUsageStore.saveMaziao(.init(remainingCredits: max(0, credits), updatedAt: Date()))
-        }
+    }
 
+    private static func waitForTask(
+        _ receipt: MaziaoTaskJournal.Receipt,
+        characterCount: Int,
+        progress: DubbingRenderProgressHandler?
+    ) async throws -> [URL] {
+        let expectedCount = receipt.partDigests.count
         let timeout = MaziaoPollingPolicy.timeoutSeconds(
-            characterCount: characterCount,
+            characterCount: max(characterCount, receipt.characterCount ?? 0),
             partCount: expectedCount
         )
         let clock = ContinuousClock()
@@ -177,7 +214,8 @@ enum MaziaoAPIClient {
         var transientStatusFailures = 0
         while clock.now < deadline {
             try Task.checkCancellation()
-            let statusBody = try JSONSerialization.data(withJSONObject: ["ids": [submit.taskID]])
+            guard try await accountDigest() == receipt.accountDigest else { throw CancellationError() }
+            let statusBody = try JSONSerialization.data(withJSONObject: ["ids": [receipt.taskID]])
             let statusData: Data
             do {
                 statusData = try await send(
@@ -198,13 +236,14 @@ enum MaziaoAPIClient {
                 continue
             }
             let statuses = try MaziaoResponseDecoder.taskStates(from: statusData)
-            guard let status = statuses.first(where: { $0.id == submit.taskID }) else {
+            guard let status = statuses.first(where: { $0.id == receipt.taskID }) else {
                 throw DubbingError.providerResponse("Maziao không trả trạng thái tác vụ.")
             }
             switch status.status.lowercased() {
             case "completed", "success", "succeeded":
                 return try MaziaoResponseDecoder.audioURLs(from: status, expectedCount: expectedCount)
             case "failed", "error", "cancelled", "canceled":
+                try journal.remove(receipt)
                 throw DubbingError.providerResponse("Tác vụ Maziao không hoàn tất.")
             default:
                 let stage: DubbingRemoteTaskStage
@@ -300,15 +339,48 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
         guard let voice = request.voiceIdentifier, !voice.isEmpty else {
             throw DubbingError.missingVoiceIdentifier("Maziao")
         }
-        let audio = try await MaziaoAPIClient.synthesize(request, progress: progress)
-        guard !audio.isEmpty else { throw DubbingError.invalidAudioBuffer }
+        let urls = try await MaziaoAPIClient.singleAudioURLs(request, progress: progress)
+        await progress?(.downloading(current: 1, total: 1))
+        let file = try await MaziaoAPIClient.audioFile(from: urls[0])
+        defer { try? FileManager.default.removeItem(at: file) }
         await progress?(.transcoding(current: 1, total: 1))
-        try await DubbingAudioTranscoder.writeCloudAudio(audio, sourceExtension: "wav", to: request.outputURL)
+        try await DubbingAudioTranscoder.writeCloudAudioFile(file, to: request.outputURL)
+        guard DubbingAudioValidation.isPlausible(duration: await DubbingCacheStore.audioDuration(at: request.outputURL),
+                                                 text: request.text) else {
+            try? FileManager.default.removeItem(at: request.outputURL)
+            throw DubbingError.invalidAudioBuffer
+        }
         await progress?(.committing(total: 1))
+        try await MaziaoAPIClient.finish([request])
     }
 
-    func renderBatches(for requests: [DubbingSpeechRequest]) throws -> [[DubbingSpeechRequest]] {
-        try MaziaoBatchPlanner.batches(for: requests)
+    func renderBatches(for requests: [DubbingSpeechRequest]) async throws -> [[DubbingSpeechRequest]] {
+        guard !requests.isEmpty else { return [] }
+        let account = try await MaziaoAPIClient.accountDigest()
+        var remaining = requests
+        var recovered: [[DubbingSpeechRequest]] = []
+        // Recover partial local commits using the original task's result positions.
+        while !remaining.isEmpty {
+            var candidate: MaziaoTaskJournal.Receipt?
+            for request in remaining {
+                if let match = try MaziaoAPIClient.journal.matching(account: account,
+                                                   parts: [MaziaoTaskJournal.partDigest(request)]) {
+                    candidate = match
+                    break
+                }
+            }
+            guard let receipt = candidate else { break }
+            var available = receipt.partDigests
+            let batch = remaining.filter { request in
+                guard let index = available.firstIndex(of: MaziaoTaskJournal.partDigest(request)) else { return false }
+                available.remove(at: index)
+                return true
+            }
+            recovered.append(batch)
+            let ids = Set(batch.map(\.cueID))
+            remaining.removeAll { ids.contains($0.cueID) }
+        }
+        return recovered + (try MaziaoBatchPlanner.batches(for: remaining))
     }
 
     func renderBatch(
@@ -322,13 +394,13 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
             $0.outputURL.deletingLastPathComponent().appendingPathComponent(".maziao-\(UUID().uuidString).caf")
         }
         defer { for url in staged { try? FileManager.default.removeItem(at: url) } }
-        // Download/decode one result at a time; never keep a batch of PCM in memory.
-        for index in requests.indices {
-            try Task.checkCancellation()
+        // At most two disk downloads/native buffers; never hold a batch of audio Data.
+        try await DubbingRenderQueue.run(count: requests.count) { index in
             await progress?(.downloading(current: index + 1, total: requests.count))
-            let audio = try await MaziaoAPIClient.audio(from: urls[index])
+            let file = try await MaziaoAPIClient.audioFile(from: urls[index])
+            defer { try? FileManager.default.removeItem(at: file) }
             await progress?(.transcoding(current: index + 1, total: requests.count))
-            try await DubbingAudioTranscoder.writeCloudAudio(audio, sourceExtension: "wav", to: staged[index])
+            try await DubbingAudioTranscoder.writeCloudAudioFile(file, to: staged[index])
             let duration = await DubbingCacheStore.audioDuration(at: staged[index])
             guard DubbingAudioValidation.isPlausible(duration: duration, text: requests[index].text) else {
                 throw DubbingError.invalidAudioBuffer
@@ -346,6 +418,7 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
             for url in committed { try? FileManager.default.removeItem(at: url) }
             throw error
         }
+        try await MaziaoAPIClient.finish(requests)
     }
 
     func stop() {}

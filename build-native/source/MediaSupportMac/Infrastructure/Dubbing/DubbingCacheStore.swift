@@ -37,7 +37,8 @@ struct DubbingCacheStore: Sendable {
     }
 
     func existingClipURL(for fingerprint: String) -> URL? {
-        let candidates = [clipURL(for: fingerprint), mergedClipURL(for: fingerprint)]
+        let candidates = [clipURL(for: fingerprint), mergedClipURL(for: fingerprint),
+                          rootURL.appendingPathComponent("\(fingerprint).mp3")]
         return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
@@ -57,9 +58,7 @@ struct DubbingCacheStore: Sendable {
     func aliasClip(from sourceURL: URL, for fingerprint: String) throws -> URL {
         try prepare()
         if let existing = existingClipURL(for: fingerprint) { return existing }
-        let destination = sourceURL.pathExtension.lowercased() == "m4a"
-            ? mergedClipURL(for: fingerprint)
-            : clipURL(for: fingerprint)
+        let destination = rootURL.appendingPathComponent("\(fingerprint).\(sourceURL.pathExtension.lowercased())")
         guard sourceURL.standardizedFileURL != destination.standardizedFileURL else { return sourceURL }
         do {
             try FileManager.default.linkItem(at: sourceURL, to: destination)
@@ -70,17 +69,50 @@ struct DubbingCacheStore: Sendable {
     }
 
     func migrateClip(from oldFingerprint: String, to newFingerprint: String) throws -> URL? {
+        guard !oldFingerprint.isEmpty else { return nil }
         if let existing = existingClipURL(for: newFingerprint) { return existing }
         guard let oldURL = existingClipURL(for: oldFingerprint) else { return nil }
+        return try aliasClip(from: oldURL, for: newFingerprint)
+    }
+
+    func registerSpeechReuse(content: String, fingerprint: String) throws {
+        guard let source = existingClipURL(for: fingerprint), source.pathExtension != "m4a" else { return }
         try prepare()
-        let newURL = clipURL(for: newFingerprint)
-        try FileManager.default.copyItem(at: oldURL, to: newURL)
-        return newURL
+        try JSONEncoder().encode(fingerprint).write(to: reuseURL(content), options: [.atomic])
+        try? FileManager.default.removeItem(at: blockedReuseURL(fingerprint))
+    }
+
+    func reuseSpeech(content: String, fingerprint: String) throws -> URL? {
+        guard allowsReuse(for: fingerprint),
+              FileManager.default.fileExists(atPath: reuseURL(content).path) else { return nil }
+        let sourceID = try JSONDecoder().decode(String.self, from: Data(contentsOf: reuseURL(content)))
+        guard sourceID.range(of: "^[0-9a-f]{16,64}$", options: .regularExpression) != nil,
+              let source = existingClipURL(for: sourceID), source.pathExtension != "m4a" else { return nil }
+        return try aliasClip(from: source, for: fingerprint)
+    }
+
+    func allowsReuse(for fingerprint: String) -> Bool {
+        !FileManager.default.fileExists(atPath: blockedReuseURL(fingerprint).path)
+    }
+
+    /// Explicit delete must not immediately resurrect the clip from a reuse alias.
+    func blockReuse(for fingerprint: String) throws {
+        try prepare()
+        try Data().write(to: blockedReuseURL(fingerprint), options: [.atomic])
+    }
+
+    private func reuseURL(_ content: String) -> URL {
+        rootURL.appendingPathComponent(".reuse-\(content).json")
+    }
+
+    private func blockedReuseURL(_ fingerprint: String) -> URL {
+        rootURL.appendingPathComponent(".deleted-\(fingerprint)")
     }
 
     func removeClip(for fingerprint: String) {
         try? FileManager.default.removeItem(at: clipURL(for: fingerprint))
         try? FileManager.default.removeItem(at: mergedClipURL(for: fingerprint))
+        try? FileManager.default.removeItem(at: rootURL.appendingPathComponent("\(fingerprint).mp3"))
     }
 
     func removeAll() throws {
@@ -100,7 +132,7 @@ struct DubbingCacheStore: Sendable {
                 .fileAllocatedSizeKey,
                 .totalFileAllocatedSizeKey,
             ],
-            options: [.skipsHiddenFiles]
+            options: []
         ) else { return .empty }
 
         var allocatedBytes: Int64 = 0
@@ -109,21 +141,24 @@ struct DubbingCacheStore: Sendable {
         var seenFileNumbers: Set<UInt64> = []
         for case let url as URL in enumerator {
             let fileExtension = url.pathExtension.lowercased()
-            guard fileExtension == "caf" || fileExtension == "m4a",
-                  !url.lastPathComponent.contains(".partial.") else { continue }
+            let isAudio = fileExtension == "caf" || fileExtension == "m4a" || fileExtension == "mp3"
+            let isIndex = fileExtension == "json" && url.lastPathComponent.hasPrefix(".reuse-")
+            guard isAudio || isIndex,
+                  !url.lastPathComponent.contains(".partial."),
+                  !url.lastPathComponent.hasPrefix(".maziao-") else { continue }
             let values = try url.resourceValues(forKeys: [
                 .isRegularFileKey,
                 .fileAllocatedSizeKey,
                 .totalFileAllocatedSizeKey,
             ])
             guard values.isRegularFile == true else { continue }
-            clipCount += 1
+            if isAudio { clipCount += 1 }
 
             let attributes = try fileManager.attributesOfItem(atPath: url.path)
             if let number = attributes[.systemFileNumber] as? NSNumber {
                 guard seenFileNumbers.insert(number.uint64Value).inserted else { continue }
             }
-            storedFileCount += 1
+            if isAudio { storedFileCount += 1 }
             let bytes = values.totalFileAllocatedSize
                 ?? values.fileAllocatedSize
                 ?? (attributes[.size] as? NSNumber)?.intValue
@@ -138,9 +173,6 @@ struct DubbingCacheStore: Sendable {
     }
 
     static func audioDuration(at url: URL) async -> Double {
-        let asset = AVURLAsset(url: url)
-        guard let duration = try? await asset.load(.duration) else { return 0 }
-        let seconds = duration.seconds
-        return seconds.isFinite && seconds > 0 ? seconds : 0
+        await DubbingAudioDurationCache.shared.duration(at: url)
     }
 }

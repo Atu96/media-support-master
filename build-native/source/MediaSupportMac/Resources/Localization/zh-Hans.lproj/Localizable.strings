@@ -554,6 +554,7 @@
 "Đang chuẩn bị %d câu chưa có giọng…" = "正在准备%d条尚未生成语音的字幕…";
 "Đang tạo câu %d/%d bằng %@…" = "正在生成第%d/%d条字幕（%@）…";
 "Nhóm %d/%d · Đang gửi %d câu tới Maziao…" = "批次%d/%d · 正在向Maziao发送%d条字幕…";
+"Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…" = "批次%d/%d · 正在继续已提交的Maziao任务…";
 "đang xếp hàng" = "正在排队";
 "đang xử lý" = "正在处理";
 "đang lưu kết quả" = "正在保存结果";

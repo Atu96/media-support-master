@@ -5,6 +5,13 @@ import Foundation
 final class DubbingSessionModel: ObservableObject {
     static let shared = DubbingSessionModel()
 
+    static func optimizationSmokeSession(defaults: UserDefaults, cache: DubbingCacheStore,
+                                         speech: DubbingSpeechSynthesizing) -> DubbingSessionModel? {
+        guard Bundle.main.object(forInfoDictionaryKey: "MediaSupportBuildChannel") as? String == "test" else { return nil }
+        return DubbingSessionModel(defaults: defaults, cache: cache, speech: speech, googleSpeech: speech,
+                                   elevenSpeech: speech, maziaoSpeech: speech, readCredentials: false)
+    }
+
     @Published private(set) var renderedByCueID: [Int: DubbingRenderedCue] = [:]
     @Published private(set) var playbackRateByFingerprint: [String: Double] = [:]
     @Published private(set) var renderingCueIDs: Set<Int> = []
@@ -99,6 +106,7 @@ final class DubbingSessionModel: ObservableObject {
     private let maziaoSpeech: DubbingSpeechSynthesizing
     private let playback = DubbingPlaybackCoordinator()
     private var renderTask: Task<Void, Never>?
+    private var renderGeneration: UUID?
     private var cacheLoadTask: Task<Void, Never>?
     private var mergeAudioTask: Task<Void, Never>?
     private var mergeAudioGeneration: UUID?
@@ -134,7 +142,8 @@ final class DubbingSessionModel: ObservableObject {
         speech: DubbingSpeechSynthesizing? = nil,
         googleSpeech: DubbingSpeechSynthesizing? = nil,
         elevenSpeech: DubbingSpeechSynthesizing? = nil,
-        maziaoSpeech: DubbingSpeechSynthesizing? = nil
+        maziaoSpeech: DubbingSpeechSynthesizing? = nil,
+        readCredentials: Bool = true
     ) {
         self.defaults = defaults
         self.cache = cache
@@ -164,9 +173,9 @@ final class DubbingSessionModel: ObservableObject {
         } ?? [:]
         selectCompatibleGoogleVoiceIfNeeded()
         selectCompatibleVoiceIfNeeded()
-        hasGoogleCredential = GoogleTTSCredentialStore.hasKey
-        hasElevenLabsCredential = ElevenLabsCredentialStore.hasKey
-        hasMaziaoCredential = MaziaoCredentialStore.hasKey
+        hasGoogleCredential = readCredentials && GoogleTTSCredentialStore.hasKey
+        hasElevenLabsCredential = readCredentials && ElevenLabsCredentialStore.hasKey
+        hasMaziaoCredential = readCredentials && MaziaoCredentialStore.hasKey
         refreshCacheUsage()
     }
 
@@ -199,6 +208,8 @@ final class DubbingSessionModel: ObservableObject {
             guard let fingerprint = fingerprints[cue.id] else { continue }
             if let rendered = current[cue.id], rendered.fingerprint == fingerprint {
                 current[cue.id] = rendered.updatingTiming(from: cue)
+            } else {
+                current.removeValue(forKey: cue.id)
             }
         }
         renderedByCueID = current
@@ -212,17 +223,8 @@ final class DubbingSessionModel: ObservableObject {
                     loaded[cue.id] = rendered.updatingTiming(from: cue)
                     continue
                 }
-                let legacyFingerprint = DubbingFingerprint.legacyTimingBound(
-                    cue: cue,
-                    localeIdentifier: language,
-                    voiceIdentifier: voice,
-                    rate: rate,
-                    provider: provider,
-                    modelIdentifier: model
-                )
-                let url = self.cache.existingClipURL(for: fingerprint)
-                    ?? (try? self.cache.migrateClip(from: legacyFingerprint, to: fingerprint))
-                    ?? nil
+                let url = self.cachedClip(cue: cue, language: language, voice: voice,
+                                          rate: rate, provider: provider, model: model)
                 guard let url else {
                     loaded.removeValue(forKey: cue.id)
                     continue
@@ -243,6 +245,11 @@ final class DubbingSessionModel: ObservableObject {
                 )
             }
             guard !Task.isCancelled else { return }
+            guard self.activeFingerprintByCueID == fingerprints else { return }
+            // Render completions may arrive while asset durations are loading.
+            for (id, rendered) in self.renderedByCueID where rendered.fingerprint == fingerprints[id] {
+                loaded[id] = rendered
+            }
             self.renderedByCueID = loaded
             self.refreshCacheUsage()
         }
@@ -504,6 +511,7 @@ final class DubbingSessionModel: ObservableObject {
         guard !selected.isEmpty else { return }
         playback.stopAll(restoreOriginalVolume: originalVolume)
         for cue in selected {
+            try? cache.blockReuse(for: cue.fingerprint)
             cache.removeClip(for: cue.fingerprint)
             playbackRateByFingerprint.removeValue(forKey: cue.fingerprint)
             renderedByCueID.removeValue(forKey: cue.id)
@@ -515,6 +523,7 @@ final class DubbingSessionModel: ObservableObject {
 
     func cancelRendering() {
         renderTask?.cancel()
+        renderGeneration = nil
         renderTask = nil
         mergeAudioTask?.cancel()
         mergeAudioTask = nil
@@ -627,9 +636,37 @@ final class DubbingSessionModel: ObservableObject {
         defaults.set(playbackRateByFingerprint, forKey: Keys.playbackRates)
     }
 
+    private func cachedClip(cue: SRTSegment, language: String, voice: String?, rate: Float,
+                            provider: DubbingSpeechProvider, model: String) -> URL? {
+        let fingerprint = DubbingFingerprint.make(cue: cue, localeIdentifier: language,
+            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+        if let existing = cache.existingClipURL(for: fingerprint) { return existing }
+        guard cache.allowsReuse(for: fingerprint) else { return nil }
+        let previous = DubbingFingerprint.previousContent(cue: cue, localeIdentifier: language,
+            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+        let legacy = provider == .elevenLabs && abs(rate - 0.5) >= 0.0001 ? "" :
+            DubbingFingerprint.legacyTimingBound(cue: cue, localeIdentifier: language,
+                voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+        if let migrated = (try? cache.migrateClip(from: previous, to: fingerprint))
+            ?? (try? cache.migrateClip(from: legacy, to: fingerprint)) {
+            if playbackRateByFingerprint[fingerprint] == nil,
+               let saved = playbackRateByFingerprint[previous] ?? playbackRateByFingerprint[legacy] {
+                playbackRateByFingerprint[fingerprint] = saved
+                persistPlaybackRates()
+            }
+            return migrated
+        }
+        let content = DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
+            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+        return try? cache.reuseSpeech(content: content, fingerprint: fingerprint)
+    }
+
     private func startRendering(_ cues: [SRTSegment], allCues: [SRTSegment]) {
         guard !cues.isEmpty, !isRendering else { return }
         renderTask?.cancel()
+        cacheLoadTask?.cancel()
+        let generation = UUID()
+        renderGeneration = generation
         progressCurrent = 0
         progressTotal = cues.count
         statusMessage = L10n.format("Đang tạo giọng %@…", speechProvider.label)
@@ -646,6 +683,11 @@ final class DubbingSessionModel: ObservableObject {
             guard let self else { return }
             do {
                 try self.cache.prepare()
+                // Resolve migration/reuse before forming paid requests.
+                for cue in cues {
+                    _ = self.cachedClip(cue: cue, language: language, voice: voice, rate: rate,
+                                        provider: provider, model: model)
+                }
                 let batchService = providerService as? DubbingSpeechBatchSynthesizing
                 var batchByCueID: [Int: [DubbingSpeechRequest]] = [:]
                 var batchPositionByCueID: [Int: (current: Int, total: Int)] = [:]
@@ -660,7 +702,7 @@ final class DubbingSessionModel: ObservableObject {
                             localeIdentifier: language, voiceIdentifier: voice, rate: rate,
                             outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: model)
                     }
-                    let batches = try batchService.renderBatches(for: pending)
+                    let batches = try await batchService.renderBatches(for: pending)
                     for (batchOffset, batch) in batches.enumerated() {
                         for request in batch { batchByCueID[request.cueID] = batch }
                         for request in batch {
@@ -668,8 +710,65 @@ final class DubbingSessionModel: ObservableObject {
                         }
                     }
                 }
+                if provider == .googleCloud || provider == .elevenLabs {
+                    let pending = cues.filter { self.cachedClip(cue: $0, language: language, voice: voice,
+                        rate: rate, provider: provider, model: model) == nil }
+                    let groups = Dictionary(grouping: pending) {
+                        DubbingFingerprint.speechContent(cue: $0, localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+                    }
+                    // Generate repeated speech once; retain separate cue/composite identities.
+                    var seenContent = Set<String>()
+                    let unique = pending.filter {
+                        seenContent.insert(DubbingFingerprint.speechContent(cue: $0, localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)).inserted
+                    }
+                    var completedCount = cues.count - pending.count
+                    self.progressCurrent = completedCount
+                    try await DubbingRenderQueue.run(count: unique.count, operation: { index in
+                        let cue = unique[index]
+                        let fingerprint = DubbingFingerprint.make(cue: cue, localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+                        try await providerService.render(.init(cueID: cue.id, text: DubbingFingerprint.spokenText(cue.text),
+                            localeIdentifier: language, voiceIdentifier: voice, rate: rate,
+                            outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: model))
+                        try Task.checkCancellation()
+                        guard let url = self.cache.existingClipURL(for: fingerprint) else {
+                            throw DubbingError.invalidAudioBuffer
+                        }
+                        let duration = await DubbingCacheStore.audioDuration(at: url)
+                        guard DubbingAudioValidation.isPlausible(duration: duration, text: cue.text) else {
+                            self.cache.removeClip(for: fingerprint)
+                            throw DubbingError.invalidAudioBuffer
+                        }
+                        let content = DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+                        try self.cache.registerSpeechReuse(content: content, fingerprint: fingerprint)
+                        guard self.renderGeneration == generation else { throw CancellationError() }
+                        for target in groups[content] ?? [cue] {
+                            let targetID = DubbingFingerprint.make(cue: target, localeIdentifier: language,
+                                voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+                            let alias = try self.cache.aliasClip(from: url, for: targetID)
+                            try self.cache.registerSpeechReuse(content: content, fingerprint: targetID)
+                            if self.activeFingerprintByCueID[target.id] == targetID {
+                                self.renderedByCueID[target.id] = .init(id: target.id, startSeconds: target.startSeconds,
+                                    endSeconds: target.endSeconds, audioDuration: duration, audioURL: alias, fingerprint: targetID)
+                            }
+                        }
+                    }, completed: { index in
+                        guard self.renderGeneration == generation else { return }
+                        let content = DubbingFingerprint.speechContent(cue: unique[index], localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+                        completedCount += groups[content]?.count ?? 1
+                        self.progressCurrent = completedCount
+                        self.statusMessage = L10n.format("Đang tạo câu %d/%d bằng %@…",
+                                                        completedCount, cues.count, provider.label)
+                    })
+                }
+                var processedCount = 0
                 for cue in cues {
                     try Task.checkCancellation()
+                    guard self.renderGeneration == generation else { throw CancellationError() }
                     let fingerprint = DubbingFingerprint.make(
                         cue: cue,
                         localeIdentifier: language,
@@ -679,14 +778,16 @@ final class DubbingSessionModel: ObservableObject {
                         modelIdentifier: model
                     )
                     let outputURL = self.cache.clipURL(for: fingerprint)
-                    if self.cache.existingClipURL(for: fingerprint) == nil {
+                    if self.cachedClip(cue: cue, language: language, voice: voice, rate: rate,
+                                       provider: provider, model: model) == nil {
                         if let batchService, let batch = batchByCueID[cue.id] {
                             let batchPosition = batchPositionByCueID[cue.id] ?? (1, 1)
                             try await batchService.renderBatch(batch) { [weak self] progress in
                                 await self?.updateRenderProgress(
                                     progress,
                                     batchCurrent: batchPosition.current,
-                                    batchTotal: batchPosition.total
+                                    batchTotal: batchPosition.total,
+                                    generation: generation
                                 )
                             }
                         } else {
@@ -699,7 +800,7 @@ final class DubbingSessionModel: ObservableObject {
                             try await providerService.render(
                                 DubbingSpeechRequest(
                                     cueID: cue.id,
-                                    text: cue.text.replacingOccurrences(of: "\n", with: " "),
+                                    text: DubbingFingerprint.spokenText(cue.text),
                                     localeIdentifier: language,
                                     voiceIdentifier: voice,
                                     rate: rate,
@@ -716,6 +817,14 @@ final class DubbingSessionModel: ObservableObject {
                         self.cache.removeClip(for: fingerprint)
                         throw DubbingError.invalidAudioBuffer
                     }
+                    try Task.checkCancellation()
+                    guard self.renderGeneration == generation else { throw CancellationError() }
+                    try self.cache.registerSpeechReuse(
+                        content: DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
+                            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model),
+                        fingerprint: fingerprint)
+                    guard self.activeFingerprintByCueID[cue.id] == nil
+                            || self.activeFingerprintByCueID[cue.id] == fingerprint else { throw CancellationError() }
                     self.renderedByCueID[cue.id] = DubbingRenderedCue(
                         id: cue.id,
                         startSeconds: cue.startSeconds,
@@ -725,7 +834,8 @@ final class DubbingSessionModel: ObservableObject {
                         fingerprint: fingerprint
                     )
                     self.renderingCueIDs.remove(cue.id)
-                    self.progressCurrent += 1
+                    processedCount += 1
+                    self.progressCurrent = max(self.progressCurrent, processedCount)
                 }
                 self.renderTask = nil
                 self.renderingCueIDs.removeAll()
@@ -738,10 +848,12 @@ final class DubbingSessionModel: ObservableObject {
                     _ = try? await MaziaoAPIClient.account()
                 }
             } catch is CancellationError {
+                guard self.renderGeneration == generation else { return }
                 self.renderTask = nil
                 self.renderingCueIDs.removeAll()
                 self.statusMessage = L10n.string("Đã dừng tạo giọng.")
             } catch {
+                guard self.renderGeneration == generation else { return }
                 self.renderTask = nil
                 self.renderingCueIDs.removeAll()
                 if let dubbingError = error as? DubbingError,
@@ -757,9 +869,13 @@ final class DubbingSessionModel: ObservableObject {
     private func updateRenderProgress(
         _ progress: DubbingRenderProgress,
         batchCurrent: Int,
-        batchTotal: Int
+        batchTotal: Int,
+        generation: UUID
     ) {
+        guard renderGeneration == generation, !Task.isCancelled else { return }
         switch progress {
+        case .resuming:
+            statusMessage = L10n.format("Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…", batchCurrent, batchTotal)
         case let .submitting(total):
             statusMessage = L10n.format(
                 "Nhóm %d/%d · Đang gửi %d câu tới Maziao…",

@@ -572,6 +572,7 @@
 "Đang chuẩn bị %d câu chưa có giọng…" = "Preparing %d cues without generated audio…";
 "Đang tạo câu %d/%d bằng %@…" = "Generating cue %d/%d with %@…";
 "Nhóm %d/%d · Đang gửi %d câu tới Maziao…" = "Batch %d/%d · Sending %d cues to Maziao…";
+"Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…" = "Batch %d/%d · Resuming the existing Maziao task…";
 "đang xếp hàng" = "queued";
 "đang xử lý" = "processing";
 "đang lưu kết quả" = "saving results";

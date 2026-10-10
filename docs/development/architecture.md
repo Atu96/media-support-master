@@ -23,4 +23,6 @@ Changing line count or font size schedules cancellable work off the main actor. 
 
 Provider adapters own transport/schema, pure decoders validate fixtures, and session models coordinate jobs. Views do not call REST or read credential values directly. Translation writes only after all cue IDs are accounted for. Dubbing cache identity is independent of cue timing; explicit merges can preserve or combine valid audio locally.
 
+Dubbing uses a two-worker cloud queue, cue-specific cache identities plus an independent speech-reuse index, and opaque Maziao receipt recovery on explicit render intent. Google/Maziao cache CAF; ElevenLabs retains validated original MP3; composite merges remain M4A. A bounded metadata cache shares duration probes across hard links. See [dubbing execution and recovery](dubbing.md) for cancellation, migration and provider limits.
+
 Support is an independent, click-only HTTPS link shared by About and the resource bar. It does not participate in job completion, billing, or shutdown. New-install language selection is tested independently and preserves valid existing choices.
