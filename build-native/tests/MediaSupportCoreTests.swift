@@ -88,6 +88,8 @@ enum MediaSupportCoreTests {
         await runAsync("Đổi bố cục chạy nền, hủy worker và chỉ nhận yêu cầu cuối", testLayoutReflowLifecycle)
         run("Reflow 9 phút đa ngôn ngữ giữ text/timing và phép đo một cue", testLongTranscriptReflow)
         run("Subtitle QC phát hiện tràn, tốc độ và timing nhưng không sửa cue", testSubtitleQualityAnalyzer)
+        run("OCR giữ chữ, blank/gap, timecode và loại jitter một mẫu", testOCRSubtitleTiming)
+        run("Chọn vùng OCR theo hình đang hiển thị, clamp ngoài biên", testOCRRegionSelection)
         run("Chép lời dài tách cue theo 1/2 dòng, giữ timing", testTranscriptPostProcessor)
         run("Chép lời Việt gom mảnh STT thành cue đọc được", testVietnameseSpeechChunkCoalescing)
         run("Dọn cue gom mảnh ngắn qua khoảng lặng ngắn", testShortGapSpeechChunkCoalescing)
@@ -110,6 +112,7 @@ enum MediaSupportCoreTests {
         await runAsync("Undo/Redo subtitle có giới hạn và không mất thứ tự", testBoundedSubtitleEditHistory)
         await runAsync("Waveform native giữ duration audio và có peak", testWaveformPeakService)
         run("Quy tắc tên/path dự án ổn định", testProjectPaths)
+        run("Mở lại video không ghi đè OCR/edits bằng SRT cũ cạnh video", testSiblingTranscriptFreshness)
         run("TTS ưu tiên Google, giữ Eleven v3 và Apple Offline", testDubbingProviderCatalog)
         run("Dubbing fingerprint và fit cue ổn định", testDubbingModels)
         run("Nút lồng cue chỉ bật khi selection và provider hợp lệ", testDubbingToolbarAvailability)
@@ -2699,6 +2702,56 @@ enum MediaSupportCoreTests {
         do { try await task.value; throw TestFailure(description: "queue không hủy") }
         catch is CancellationError { }
         try expect(active == 0, "hủy phải đợi worker thoát")
+    }
+
+    private static func testSiblingTranscriptFreshness() throws {
+        let old = Date(timeIntervalSince1970: 1_000)
+        let new = Date(timeIntervalSince1970: 2_000)
+        try expect(!ProjectBackupPathPolicy.shouldImportSiblingTranscript(hasWorking: true, siblingModified: old,
+            workingModified: new), "export cũ không được thay OCR mới")
+        try expect(ProjectBackupPathPolicy.shouldImportSiblingTranscript(hasWorking: true, siblingModified: new,
+            workingModified: old), "SRT ngoài được sửa mới phải cập nhật")
+        try expect(!ProjectBackupPathPolicy.shouldImportSiblingTranscript(hasWorking: true, siblingModified: new,
+            workingModified: new), "copy có cùng version không cần ingest lại")
+        try expect(ProjectBackupPathPolicy.shouldImportSiblingTranscript(hasWorking: false, siblingModified: nil,
+            workingModified: nil), "video chưa có transcript phải nạp SRT ngoài")
+        try expect(!ProjectBackupPathPolicy.shouldImportSiblingTranscript(hasWorking: true, siblingModified: nil,
+            workingModified: new), "metadata không đọc được phải bảo vệ transcript hiện có")
+    }
+
+    private static func testOCRSubtitleTiming() throws {
+        var accumulator = OCRSubtitleAccumulator()
+        let samples: [(Double, String?)] = [(0, ""), (0.5, "東京へ\n行きます。"), (1, "東京へ\n行きます。"),
+            (1.5, nil), (2, "東京へ\n行きます。"), (2.5, "次の字幕"), (3, "次の字幕"), (3.5, ""),
+            (4, "次の字幕"), (4.5, "次の字幕")]
+        for (time, text) in samples { accumulator.consume(.init(time: time, text: text, confidence: 0.95)) }
+        let cues = accumulator.finish(duration: 5)
+        try expect(cues.count == 3, "OCR phải giữ gap kể cả câu lặp sau khoảng trống")
+        try expect(cues[0].text == "東京へ\n行きます。", "OCR không được sửa Nhật hoặc xóa hai dòng")
+        try expect(cues[0].startSeconds == 0.25 && cues[0].endSeconds == 2.25, "OCR timing phải ở biên mẫu")
+        try expect(cues[1].endSeconds == 3.25 && cues[2].startSeconds == 3.75, "OCR không gộp xuyên blank")
+        for pair in zip(cues, cues.dropFirst()) { try expect(pair.0.endSeconds <= pair.1.startSeconds, "OCR overlap") }
+        try expect(SRTDocument.parseSegments(SRTDocument.renderSRT(cues)).map(\.text) == cues.map(\.text),
+                   "OCR cue phải đi qua SRT parser hiện có")
+        var jitter = OCRSubtitleAccumulator()
+        for (time, text) in [(0.0, "Xin chào"), (0.5, "Xin chào"), (1.0, "Xin chao"), (1.5, "Xin chào")] {
+            jitter.consume(.init(time: time, text: text, confidence: 0.9))
+        }
+        let stable = jitter.finish(duration: 2)
+        try expect(stable.count == 1 && stable[0].text == "Xin chào", "một frame nhiễu không được tạo cue giả")
+        var uncertain = OCRSubtitleAccumulator()
+        uncertain.consume(.init(time: 0, text: "giả", confidence: 0.1))
+        uncertain.consume(.init(time: .nan, text: "lỗi", confidence: 1))
+        try expect(uncertain.finish(duration: 1).isEmpty, "low confidence/invalid timestamps phải bỏ")
+    }
+
+    private static func testOCRRegionSelection() throws {
+        let region = SubtitleOCRRegion.selection(from: CGPoint(x: 800, y: 500), to: CGPoint(x: 100, y: 300),
+                                                 size: CGSize(width: 1000, height: 500))
+        try expect(region.rect == CGRect(x: 0.1, y: 0.6, width: 0.7, height: 0.4), "drag ngược không đúng tọa độ top-left")
+        let outside = SubtitleOCRRegion(x: -5, y: 5, width: 4, height: 2).rect
+        try expect(outside.minX >= 0 && outside.minY >= 0 && outside.maxX <= 1 && outside.maxY <= 1,
+                   "OCR crop không được vượt ảnh")
     }
 
     private static func testDubbingDurationCache() async throws {

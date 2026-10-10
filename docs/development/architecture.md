@@ -19,6 +19,8 @@ For non-Japanese text, local token/phrase context improves boundaries without re
 
 Changing line count or font size schedules cancellable work off the main actor. Only the newest result with a matching project/text/style snapshot can commit to undo history. It does not transcribe again or call an online model.
 
+Burned-in subtitle OCR uses local Vision with a user-selected image region and automatic language detection. A bounded frame worker produces complete timed cues through a streaming accumulator; only a matching project snapshot commits to the existing subtitle session. See [subtitle OCR](subtitle-ocr.md). Automatic sibling-SRT restoration respects a newer working transcript.
+
 ## Providers and data
 
 Provider adapters own transport/schema, pure decoders validate fixtures, and session models coordinate jobs. Views do not call REST or read credential values directly. Translation writes only after all cue IDs are accounted for. Dubbing cache identity is independent of cue timing; explicit merges can preserve or combine valid audio locally.

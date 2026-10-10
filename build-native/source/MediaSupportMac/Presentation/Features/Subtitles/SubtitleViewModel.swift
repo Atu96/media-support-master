@@ -17,7 +17,12 @@ enum TranscriptVariant: String, CaseIterable, Identifiable {
 @MainActor
 final class SubtitleViewModel: ObservableObject {
     @Published var mediaURL: URL? {
-        didSet { if oldValue != mediaURL { layoutReflow.cancel() } }
+        didSet {
+            if oldValue != mediaURL {
+                layoutReflow.cancel()
+                ocrCreate.cancelIfMediaChanged(to: mediaURL)
+            }
+        }
     }
     /// Media đang chọn ở tab Tạo sub tự động — tách khỏi dự án active.
     @Published var whisperDraftMediaURL: URL?
@@ -29,12 +34,22 @@ final class SubtitleViewModel: ObservableObject {
     @Published var sourceLang = "auto"
 
     @Published var segments: [SRTSegment] = [] {
-        didSet { if oldValue != segments { layoutReflow.cancel() } }
+        didSet {
+            if oldValue != segments {
+                layoutReflow.cancel()
+                ocrCreate.cancelIfSessionEdited()
+            }
+        }
     }
     @Published var whisperComplete = false
     @Published var translateComplete = false
     @Published var activeTranscriptVariant: TranscriptVariant = .original {
-        didSet { if oldValue != activeTranscriptVariant { layoutReflow.cancel() } }
+        didSet {
+            if oldValue != activeTranscriptVariant {
+                layoutReflow.cancel()
+                ocrCreate.cancelIfSessionEdited()
+            }
+        }
     }
     @Published var sessionRestored = false
     @Published var completionSummary = ""
@@ -108,6 +123,7 @@ final class SubtitleViewModel: ObservableObject {
     /// Controllers tab Tạo sub — logic tách file trong `Create/`.
     lazy var whisperCreate = SubtitleWhisperCreateController(session: self)
     lazy var scriptCreate = SubtitleScriptCreateController(session: self)
+    lazy var ocrCreate = SubtitleOCRCreateController(session: self)
 
     init(coordinator: AppCoordinator) {
         self.engine = MediaEngineService.shared

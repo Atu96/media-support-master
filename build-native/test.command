@@ -56,6 +56,7 @@ SOURCES=(
     "$SRC/Domain/SubtitleTiming/SpeechWordTimestamp.swift"
     "$SRC/Domain/SubtitleTiming/SpeechWordTimingProcessor.swift"
     "$SRC/Domain/SubtitleTiming/SemanticCuePlanner.swift"
+    "$SRC/Domain/SubtitleTiming/OCRSubtitleAccumulator.swift"
     "$SRC/Infrastructure/Translation/SubtitleTranscriptPostProcessor.swift"
     "$SRC/Infrastructure/Translation/SubtitleLayoutReflowController.swift"
     "$SRC/Infrastructure/Preview/WaveformPeakService.swift"
@@ -126,6 +127,18 @@ NATIVE_XML_FIXTURES="$(mktemp -d /private/tmp/msm-native-xml.XXXXXX)"
 "$OUT_DIR/NativeIntegratedToolsTests" "$NATIVE_XML_FIXTURES"
 python3 "$SCRIPT_DIR/tests/test_native_fcpxml.py" "$NATIVE_XML_FIXTURES" "$SCRIPT_DIR/../scripts/lib/convert_srt_fcpxml.py"
 rm -rf "$NATIVE_XML_FIXTURES"
+
+run_swiftc -Onone -target "arm64-apple-macos${MIN_MACOS}" -sdk "$SDK" \
+    -module-cache-path "$MODULE_CACHE" -parse-as-library \
+    -framework Vision -framework AVFoundation -framework CoreText -framework NaturalLanguage \
+    "$SRC/Domain/Models/SRTSegment.swift" \
+    "$SRC/Infrastructure/Translation/SRTDocument.swift" \
+    "$SRC/Infrastructure/Translation/SRTTimecode.swift" \
+    "$SRC/Domain/SubtitleTiming/OCRSubtitleAccumulator.swift" \
+    "$SRC/Infrastructure/Translation/SubtitleOCRService.swift" \
+    "$SRC/App/Localization/L10n.swift" \
+    "$SCRIPT_DIR/tests/SubtitleOCRTests.swift" -o "$OUT_DIR/SubtitleOCRTests"
+"$OUT_DIR/SubtitleOCRTests"
 if [[ -n "${MSM_JAPANESE_LEGACY_PYTHON:-}" && -n "${MSM_JAPANESE_LEGACY_DICTIONARY:-}" ]]; then
     python3 "$SCRIPT_DIR/tests/test_japanese_helper.py" \
         "$SCRIPT_DIR/../_work/japanese-tools/JapaneseTools/japanese-helper" \

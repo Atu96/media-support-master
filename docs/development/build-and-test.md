@@ -40,6 +40,10 @@ Passing source/fixture tests is not the same as testing real media, a paid provi
 
 Local agent/checkpoint/archive notes remain outside Git. A fresh clone uses these developer notes and the actual code/tests as its guide.
 
+## Subtitle OCR smoke
+
+The OCR hook is documented under [subtitle OCR](subtitle-ocr.md). `test.command` also compiles/runs native `SubtitleOCRTests` with Vision and synthetic H.264 video. To retain fixtures, run `./build-native/.test-out/SubtitleOCRTests /private/tmp/msm-ocr-fixtures-new` with a new directory, then run the TEST binary with `MSM_SUBTITLE_OCR_SMOKE_DIR=/private/tmp/msm-ocr-fixtures-new`. This exercises the packaged OCR→SRT path without Keychain or network. The native test covers auto VI/EN/JA/KO/ZH, crop, rotation, one/two lines, closer sampling and cancellation.
+
 ## Dubbing session smoke
 
 After building a TEST bundle, run the following with a new temporary directory:

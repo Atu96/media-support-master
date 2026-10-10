@@ -3,6 +3,7 @@ import SwiftUI
 /// Ô chọn media + dự án gần đây + nút chạy — dùng chung tab Tạo sub tự động & Khớp văn bản gốc.
 struct SubtitleDraftMediaCard: View {
     @ObservedObject var viewModel: SubtitleViewModel
+    @ObservedObject private var runner = MediaEngineService.shared.runner
     let tab: SubtitleModuleTab
     let rowHeight: CGFloat
     let runTitle: String
@@ -12,6 +13,7 @@ struct SubtitleDraftMediaCard: View {
     let onRun: () -> Void
 
     @State private var showRecentProjects = false
+    @State private var showOCR = false
 
     private var draftURL: URL? {
         switch tab {
@@ -108,19 +110,25 @@ struct SubtitleDraftMediaCard: View {
 
             if isStandaloneSRT {
                 selectedSRTStatus
-            } else if hasExistingSRTForDraft {
-                EmptyView()
             } else {
-                HStack(alignment: .center, spacing: 0) {
+                HStack(alignment: .center, spacing: 8) {
                 Spacer(minLength: 0)
+                if !hasExistingSRTForDraft {
                 AppPillButton(
                     title: isRunning ? runningTitle : runTitle,
                     icon: runIcon,
                     tint: AppTheme.accentBlue,
                     filled: true,
-                    disabled: !canRun || isRunning
+                    disabled: !canRun || isRunning || runner.isRunning
                 ) {
                     onRun()
+                }
+                }
+                if isAutomaticCreate {
+                    AppPillButton(title: "Lấy sub từ video", icon: "text.viewfinder", tint: AppTheme.accentBlue,
+                                  filled: false, disabled: draftURL == nil || runner.isRunning) {
+                        showOCR = true
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -131,6 +139,12 @@ struct SubtitleDraftMediaCard: View {
         .frame(height: rowHeight)
         .background(AppTileSurface())
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cardRadius, style: .continuous))
+        .sheet(isPresented: $showOCR) {
+            if let draftURL {
+                SubtitleOCRConfigurationView(media: draftURL, controller: viewModel.ocrCreate,
+                                              canRun: !viewModel.engine.isRunning)
+            }
+        }
     }
 
     private var runningTitle: String {

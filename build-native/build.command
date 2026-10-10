@@ -49,7 +49,7 @@ fi
 
 FRAMEWORKS=(
     AppKit SwiftUI Combine UniformTypeIdentifiers AVKit AVFoundation AVFAudio
-    Translation NaturalLanguage CoreText Security FoundationModels IOKit SoundAnalysis
+    Translation NaturalLanguage CoreText Security FoundationModels IOKit SoundAnalysis Vision
 )
 
 echo "→ swiftc arm64 (${#SOURCES[@]} files)"

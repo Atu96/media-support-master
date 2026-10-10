@@ -46,6 +46,16 @@ extension SubtitleViewModel {
         SubtitleDualDraftStore.setWhisperDraft(url)
     }
 
+    /// A complete OCR transcript already exists in the vault; do not reload an older sibling SRT.
+    func adoptMediaForOCRTranscript(_ url: URL) {
+        UserDefaults.standard.set(url.path, forKey: SubtitleDualDraftStore.lastMediaPathKey)
+        setWhisperDraftMedia(url)
+        mediaURL = url
+        sessionRestored = false
+        exportMessage = ""
+        burnMessage = ""
+    }
+
     func setScriptDraftMedia(_ url: URL) {
         scriptDraftMediaURL = url
         SubtitleDualDraftStore.setScriptDraft(url)

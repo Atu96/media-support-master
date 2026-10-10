@@ -4,6 +4,13 @@ import Foundation
 /// Quy tắc tên và đường dẫn dự án. Tất cả hàm ở đây là pure:
 /// không tạo/xóa/di chuyển file và không đọc preferences.
 enum ProjectBackupPathPolicy {
+    /// Automatic reopening must not replace a freshly generated/edited vault transcript with an old export.
+    static func shouldImportSiblingTranscript(hasWorking: Bool, siblingModified: Date?, workingModified: Date?) -> Bool {
+        guard hasWorking else { return true }
+        guard let siblingModified, let workingModified else { return false }
+        return siblingModified > workingModified
+    }
+
     static func projectID(for media: URL) -> String {
         let path = media.standardizedFileURL.path
         let digest = SHA256.hash(data: Data(path.utf8))

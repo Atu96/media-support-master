@@ -559,7 +559,13 @@ enum ProjectBackupStore {
         guard hasSRT || hasLang else { return }
 
         if hasSRT {
-            try? ingestTranscript(from: srt, media: media)
+            let working = workingSRTURL(for: media)
+            let shouldImport = ProjectBackupPathPolicy.shouldImportSiblingTranscript(
+                hasWorking: FileManager.default.fileExists(atPath: working.path),
+                siblingModified: (try? srt.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+                workingModified: (try? working.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            )
+            if shouldImport { try? ingestTranscript(from: srt, media: media) }
         } else if hasLang {
             var manifest = load(for: media) ?? freshManifest(for: media)
             manifest.lang = absorbLanguageSidecar(for: media) ?? manifest.lang
