@@ -19,6 +19,7 @@ struct SubtitleTimelineWorkspace: View {
     @ObservedObject var viewModel: SubtitleViewModel
     @ObservedObject private var preview = AVPreviewService.shared
     @ObservedObject private var dubbingSession = DubbingSessionModel.shared
+    @ObservedObject private var runner = MediaEngineService.shared.runner
     @State private var cueSelection = TimelineCueSelection()
     @State private var dubbingSelection = TimelineCueSelection()
     @State private var timelineSelectionFocus: TimelineSelectionFocus = .subtitle
@@ -53,6 +54,7 @@ struct SubtitleTimelineWorkspace: View {
     @State private var skimDisplayTime: Double?
     @State private var skimViewportX: CGFloat?
     @State private var isScriptSheetOpen = false
+    @State private var isOCRSheetOpen = false
     @State private var isStyleSheetOpen = false
     @State private var isShortcutSheetOpen = false
     @State private var exportDeliveryToast: ExportDeliverySignal?
@@ -157,6 +159,9 @@ struct SubtitleTimelineWorkspace: View {
             return false
         }
         return extensionType.conforms(to: .audio) && !extensionType.conforms(to: .movie)
+    }
+    private var canOpenOCR: Bool {
+        viewModel.mediaURL != nil && !isAudioOnlyMedia && !runner.isRunning
     }
     /// Skim là thao tác xem trước khi pause; playback đã có playhead native riêng.
     private var isSkimmingActive: Bool { skimming && !preview.isPlaying }
@@ -271,6 +276,11 @@ struct SubtitleTimelineWorkspace: View {
             }
         }
         .sheet(isPresented: $isScriptSheetOpen) { SubtitleScriptComposer(viewModel: viewModel) }
+        .sheet(isPresented: $isOCRSheetOpen) {
+            if let media = viewModel.mediaURL {
+                SubtitleOCRConfigurationView(media: media, controller: viewModel.ocrCreate, canRun: !runner.isRunning)
+            }
+        }
         .sheet(isPresented: $isStyleSheetOpen) { SubtitleTimelineStyleSheet(viewModel: viewModel) }
         .sheet(isPresented: $isShortcutSheetOpen) { TimelineShortcutSettingsSheet() }
     }
@@ -348,6 +358,20 @@ struct SubtitleTimelineWorkspace: View {
         VStack(alignment: .leading, spacing: 0) {
             fileRow(viewModel.mediaURL, icon: "film.stack", remove: removeMedia)
             fileRow(viewModel.srtURL, icon: "captions.bubble", remove: removeSRT)
+            if viewModel.mediaURL != nil && !isAudioOnlyMedia {
+                AppPillButton(
+                    title: "Lấy sub từ video",
+                    icon: "text.viewfinder",
+                    tint: AppTheme.accentBlue,
+                    filled: false,
+                    disabled: !canOpenOCR,
+                    action: beginOCR
+                )
+                .help(L10n.string("Lấy sub từ video"))
+                .accessibilityIdentifier("subtitle.ocr.import")
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+            }
             if viewModel.mediaURL == nil && viewModel.srtURL == nil {
                 Spacer()
                 VStack(spacing: 8) {
@@ -627,8 +651,11 @@ struct SubtitleTimelineWorkspace: View {
             Spacer(minLength: 10)
             HStack(spacing: AppTheme.controlGap) {
                 whisperToolButton
+                timelineToolButton("text.viewfinder", active: isOCRSheetOpen, help: "Lấy sub từ video", action: beginOCR)
+                    .disabled(!canOpenOCR)
+                    .accessibilityIdentifier("subtitle.ocr.toolbar")
                 timelineToolButton("doc.text", title: "Văn bản gốc", active: false, help: "Giữ nguyên chữ và khớp thời gian theo media") { beginScriptSubtitle() }
-                    .disabled(viewModel.mediaURL == nil || viewModel.isRunningScriptAlign)
+                    .disabled(viewModel.mediaURL == nil || runner.isRunning)
                 SubtitleTranslateMenuButton(viewModel: viewModel)
                     .help("Dịch phụ đề")
                 if AppFeatureFlags.dubbingEnabled {
@@ -840,7 +867,7 @@ struct SubtitleTimelineWorkspace: View {
             .frame(minHeight: AppTheme.compactControlHeight)
         }
         .buttonStyle(TimelineToolbarButtonStyle(isActive: viewModel.isRunningWhisper))
-        .disabled(viewModel.mediaURL == nil || viewModel.isRunningWhisper)
+        .disabled(viewModel.mediaURL == nil || runner.isRunning)
         .help(viewModel.isRunningWhisper ? "Đang chép lời: \(viewModel.whisperProgressPercent)%" : "Chép lời từ media")
         .accessibilityLabel(viewModel.isRunningWhisper ? "Đang chép lời \(viewModel.whisperProgressPercent) phần trăm" : "Chép lời từ media")
     }
@@ -1649,15 +1676,21 @@ struct SubtitleTimelineWorkspace: View {
         return !providers.isEmpty
     }
     private func beginWhisper() {
+        guard !runner.isRunning else { return }
         guard let mediaURL = viewModel.mediaURL else { chooseMedia(); return }
         viewModel.setWhisperDraftMedia(mediaURL)
         guard GroqCredentialStore.hasKey else { viewModel.openGroqSettings(); return }
         viewModel.runWhisper()
     }
     private func beginScriptSubtitle() {
+        guard !runner.isRunning else { return }
         guard let mediaURL = viewModel.mediaURL else { chooseMedia(); return }
         viewModel.setScriptDraftMedia(mediaURL)
         isScriptSheetOpen = true
+    }
+    private func beginOCR() {
+        guard canOpenOCR else { return }
+        isOCRSheetOpen = true
     }
     private func installShortcuts() {
         guard keyMonitor == nil else { return }
