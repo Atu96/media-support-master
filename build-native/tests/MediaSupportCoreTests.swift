@@ -88,6 +88,9 @@ enum MediaSupportCoreTests {
         await runAsync("Đổi bố cục chạy nền, hủy worker và chỉ nhận yêu cầu cuối", testLayoutReflowLifecycle)
         run("Reflow 9 phút đa ngôn ngữ giữ text/timing và phép đo một cue", testLongTranscriptReflow)
         run("Subtitle QC phát hiện tràn, tốc độ và timing nhưng không sửa cue", testSubtitleQualityAnalyzer)
+        run("QC kiểm đúng một/hai dòng đang chọn", testQualityLineLimit)
+        await runAsync("Sửa QC giữ chữ/span/ID/DUB và Hoàn tác", testQualityLayoutRepair)
+        run("QC giữ cache composite và tốc độ khi mở lại SRT", testQualityDubbingReindexCache)
         run("OCR giữ chữ, blank/gap, timecode và loại jitter một mẫu", testOCRSubtitleTiming)
         run("Chọn vùng OCR theo hình đang hiển thị, clamp ngoài biên", testOCRRegionSelection)
         run("Chép lời dài tách cue theo 1/2 dòng, giữ timing", testTranscriptPostProcessor)
@@ -1614,6 +1617,109 @@ enum MediaSupportCoreTests {
         try expect(issues.contains { $0.cueID == 1 && $0.code == .overlap }, "QC bỏ sót timing chồng")
         try expect(issues.contains { $0.cueID == 2 && $0.code == .tooManyLines }, "QC bỏ sót dòng thứ ba")
         try expect(SRTDocument.renderSRT(segments) == original, "QC không được mutate subtitle")
+    }
+
+    private static func testQualityLineLimit() throws {
+        let cue = SRTSegment(id: 10, index: 1, timing: "", startSeconds: 0, endSeconds: 4, text: "First line\nSecond line")
+        var config = SubtitleLayoutConfiguration(languageCode: "en", fontName: "Helvetica", fontSize: 54,
+            containerWidth: 1200, maxLines: 1, explicitBreakPolicy: .preserve)
+        try expect(SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooManyLines },
+            "chọn một dòng nhưng QC bỏ qua cue hai dòng")
+        config.maxLines = 2
+        try expect(!SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooManyLines },
+            "chọn hai dòng nhưng QC vẫn báo cue hai dòng")
+    }
+
+    private static func testQualityLayoutRepair() async throws {
+        for (language, text) in [
+            ("vi", "Xin chào Việt Nam\nHôm nay chúng ta đi thăm thành phố\nMột chuyến đi rất thú vị"),
+            ("en", "Hello from Tokyo\nWe are travelling through the city today\nThis is a beautiful place to visit"),
+            ("ko", "한국에서 여행을 시작합니다\n오늘은 아름다운 도시를 방문합니다\n즐거운 여행이 될 것입니다"),
+            ("zh", "今天我们去北京旅行\n这里有很多美丽的地方\n我们希望大家旅途愉快"),
+            ("ja", "東京で電車に乗ります。\n今日は京都を訪れます。\n楽しい旅になりました。")
+        ] {
+            for lines in 1...2 {
+                let bad = SRTSegment(id: 4, index: 1, timing: SRTTimecode.makeTiming(start: 1, end: 9),
+                    startSeconds: 1, endSeconds: 9, text: text)
+                let untouched = SRTSegment(id: 20, index: 2, timing: SRTTimecode.makeTiming(start: 10, end: 12),
+                    startSeconds: 10, endSeconds: 12, text: "OK")
+                let original = [bad, untouched]
+                let config = SubtitleLayoutConfiguration(languageCode: language, fontName: "PingFang SC", fontSize: 54,
+                    containerWidth: 560, maxLines: lines, preferredCharactersPerLine: 24, explicitBreakPolicy: .preserve)
+                let fixed = SubtitleQualityRepair.repairLayout(original, cueIDs: [bad.id], configuration: config)
+                let repaired = fixed.filter { $0.id != untouched.id }
+                func letters(_ value: String) -> String { String(value.precomposedStringWithCanonicalMapping.filter { !$0.isWhitespace }) }
+                try expect(letters(repaired.map(\.text).joined()) == letters(text), "QC sửa mất chữ \(language)/\(lines)")
+                try expect(repaired.first?.id == bad.id && repaired.first?.startSeconds == 1 && repaired.last?.endSeconds == 9,
+                    "QC làm đổi ID/span gốc")
+                try expect(!SubtitleQualityAnalyzer.analyze(repaired, configuration: config).contains {
+                    $0.code == .tooManyLines || $0.code == .lineOverflow || $0.code == .overlap
+                }, "QC sửa vẫn sai số dòng/width/timing \(language)/\(lines)")
+                for pair in zip(repaired, repaired.dropFirst()) {
+                    try expect(pair.0.endSeconds == pair.1.startSeconds, "QC tạo gap giả")
+                }
+                let retained = fixed.first { $0.id == untouched.id }!
+                try expect(retained.text == untouched.text && retained.startSeconds == untouched.startSeconds
+                    && retained.endSeconds == untouched.endSeconds && retained.timing == untouched.timing, "QC đổi cue ngoài lựa chọn")
+                func fingerprint(_ cue: SRTSegment) -> String {
+                    DubbingFingerprint.make(cue: cue, localeIdentifier: "vi-VN", voiceIdentifier: "voice", rate: 0.5)
+                }
+                try expect(fingerprint(retained) == fingerprint(untouched), "QC làm mất identity DUB cue khác")
+                try expect(Set(fixed.map(\.id)).count == fixed.count && fixed.map(\.index) == Array(1...fixed.count), "QC ID/index lỗi")
+                try expect(SRTDocument.parseSegments(SRTDocument.renderSRT(fixed)).map(\.text) == fixed.map(\.text), "QC xuất SRT lỗi")
+                try await MainActor.run {
+                    let history = SubtitleEditHistory()
+                    history.record(before: original)
+                    try expect(history.undo(current: fixed) == original, "QC không Hoàn tác được")
+                    try expect(history.redo(current: original) == fixed, "QC không Làm lại được")
+                }
+            }
+        }
+        let empty = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 2, text: "")
+        let config = SubtitleLayoutConfiguration(languageCode: "en", maxLines: 1)
+        try expect(SubtitleQualityRepair.repairLayout([empty], cueIDs: [1], configuration: config) == [empty], "QC tự viết nội dung cue rỗng")
+        try expect(SubtitleQualityRepair.repairLayout([empty], cueIDs: [99], configuration: config) == [empty], "QC sửa cue không được chọn")
+    }
+
+    private static func testQualityDubbingReindexCache() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("msm-qc-cache-\(UUID().uuidString)")
+        let cache = DubbingCacheStore(rootURL: root)
+        try cache.prepare()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let broken = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 6,
+            text: "First line has several words\nSecond line has several words\nThird line also has many words")
+        let retained = SRTSegment(id: 2, index: 2, timing: SRTTimecode.makeTiming(start: 7, end: 9),
+            startSeconds: 7, endSeconds: 9, text: "Cached composite")
+        let original = [broken, retained]
+        let config = SubtitleLayoutConfiguration(languageCode: "en", fontName: "Helvetica", fontSize: 54,
+            containerWidth: 500, maxLines: 1, preferredCharactersPerLine: 22)
+        let planned = SubtitleQualityRepair.repairLayout(original, cueIDs: [1], configuration: config)
+        let canonical = SRTSegmentEditor.reindexed(planned)
+        try expect(planned.count > original.count, "fixture QC không tách cue")
+        func fingerprint(_ cue: SRTSegment) -> String {
+            DubbingFingerprint.make(cue: cue, localeIdentifier: "en-US", voiceIdentifier: "voice", rate: 0.5)
+        }
+        let old = fingerprint(retained)
+        let composite = cache.mergedClipURL(for: old)
+        let bytes = Data("composite-cache-byte-fixture".utf8)
+        try bytes.write(to: composite)
+        let snapshot = DubbingQualityRepairCacheSnapshot(cache: cache, language: "en-US", voice: "voice", rate: 0.5,
+            provider: .appleOffline, model: "apple-system", playbackRates: [old: 0.85])
+        try snapshot.preserveClips(previous: original, planned: planned)
+        let newCue = canonical.last!
+        let new = fingerprint(newCue)
+        let alias = cache.existingClipURL(for: new)!
+        try expect(alias.pathExtension == "m4a" && (try Data(contentsOf: alias)) == bytes, "QC làm mất audio composite")
+        let sourceInode = try FileManager.default.attributesOfItem(atPath: composite.path)[.systemFileNumber] as? NSNumber
+        let aliasInode = try FileManager.default.attributesOfItem(atPath: alias.path)[.systemFileNumber] as? NSNumber
+        try expect(sourceInode == aliasInode, "QC nhân audio thay vì hard-link")
+        try expect(snapshot.preservedRates(previous: original, planned: planned)[new] == 0.85, "QC mất tốc độ thủ công")
+        let restored = SRTDocument.parseSegments(SRTDocument.renderSRT(canonical)).last!
+        try expect(cache.existingClipURL(for: fingerprint(restored)) != nil, "mở lại SRT mất cache QC")
+        cache.removeClip(for: new)
+        try cache.blockReuse(for: new)
+        try snapshot.preserveClips(previous: original, planned: planned)
+        try expect(cache.existingClipURL(for: new) == nil, "QC phục hồi clip đã xóa")
     }
 
     private static func testProjectPaths() throws {

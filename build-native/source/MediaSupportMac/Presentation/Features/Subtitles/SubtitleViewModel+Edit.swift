@@ -91,6 +91,48 @@ extension SubtitleViewModel {
         })
     }
 
+    func repairQualityCueLayout(ids: Set<Int>) {
+        guard !ids.isEmpty, !segments.isEmpty, !engine.isRunning, liveEditDraft == nil else { return }
+        let snapshot = segments
+        let media = mediaURL
+        let variant = activeTranscriptVariant
+        let language = resolvedSubtitleLanguageCode()
+        let wrap = wrapStyle
+        let fontSize = burnStyle.fontSize
+        let fontName = burnStyle.fontName
+        let boxRatio = burnStyle.boxMaxWidthRatio
+        let dubbingSnapshot = DubbingSessionModel.shared.qualityRepairCacheSnapshot()
+        layoutReflow.schedule(operation: {
+            let displaySize = media.map { VideoGeometryProbe.displaySize(for: $0) } ?? CGSize(width: 1920, height: 1080)
+            let frame = VideoPreviewFrame.classify(displaySize: displaySize)
+            let config = SubtitleLayoutConfiguration(languageCode: language, fontName: fontName,
+                fontSize: Double(fontSize),
+                containerWidth: max(Double(fontSize) * 2, Double(frame.referencePixelSize.width) * Double(boxRatio) - 24),
+                maxLines: wrap.maxLines,
+                preferredCharactersPerLine: SubtitleWrapStyle.effectiveMaxCharsPerLine(base: wrap.maxCharsPerLine, fontSize: fontSize),
+                topLineRatio: wrap.topLineRatio.topOverBottom, explicitBreakPolicy: .automatic)
+            let planned = SubtitleQualityRepair.repairLayout(snapshot, cueIDs: ids, configuration: config)
+            guard planned != snapshot else { return snapshot }
+            do { try dubbingSnapshot.preserveClips(previous: snapshot, planned: planned) }
+            catch { return snapshot }
+            return planned
+        }, completion: { [weak self] updated in
+            guard let self, !self.engine.isRunning, self.mediaURL == media, self.activeTranscriptVariant == variant,
+                  self.segments == snapshot, self.wrapStyle == wrap,
+                  self.burnStyle.fontSize == fontSize, self.burnStyle.fontName == fontName,
+                  self.burnStyle.boxMaxWidthRatio == boxRatio,
+                  self.resolvedSubtitleLanguageCode() == language, self.liveEditDraft == nil else { return }
+            guard updated != snapshot else {
+                self.logActivity(L10n.string("Không có thay đổi bố cục; hãy kiểm tra và sửa cue thủ công."))
+                return
+            }
+            let preservedRates = dubbingSnapshot.preservedRates(previous: snapshot, planned: updated)
+            DubbingSessionModel.shared.preserveQualityRepairRates(preservedRates)
+            self.applyEditSegments(SRTSegmentEditor.reindexed(updated), recordUndo: true)
+            self.logActivity(L10n.string("Đã sửa bố cục các cue đã chọn. Kiểm tra QC; có thể Hoàn tác."))
+        })
+    }
+
     var subtitleLayoutContainerWidth: Double {
         let displaySize = mediaURL.map { VideoGeometryProbe.displaySize(for: $0) }
             ?? CGSize(width: 1920, height: 1080)

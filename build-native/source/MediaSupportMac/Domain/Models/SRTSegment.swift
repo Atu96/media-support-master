@@ -1,6 +1,6 @@
 import Foundation
 
-struct SRTSegment: Identifiable, Sendable {
+struct SRTSegment: Identifiable, Equatable, Sendable {
     let id: Int
     let index: Int
     let timing: String

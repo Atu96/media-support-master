@@ -56,6 +56,14 @@ The offline suite covers persisted position/default compatibility, finite/bounde
 
 It renders bottom/top variants with a large font and one/two-line cues, compares movement and retained text pixels, and writes PNG frames. No credentials/network/user media are used. UI drag behavior and real-video quality remain separate checks.
 
+## QC repair and export toolbar
+
+In the active Timeline, **Extract subtitles from audio** transcribes speech from video/audio; **Extract video subtitles** performs local OCR. **Export** opens SRT/TXT/XML choices using the existing exporters. Video export remains in titlebar settings.
+
+QC checks the selected line limit: a two-line cue is invalid when one line is selected. Open a QC cue submenu to show it, repair its layout or edit it manually. The top repair action processes all cues exceeding the line limit. Repair runs locally on the existing cancellable reflow worker and creates one Undo step. It changes only selected cue text/layout, retains original spans and maps stable planning IDs to canonical SRT numbering. Cache hard links and manual-rate aliases keep unchanged speech/spans available after reopening, including composite audio; original cache keys remain for Undo. A long cue can be split with estimated timing within its original span; affected dubbing can need regeneration. Review remaining QC issues rather than assuming every warning can be fixed automatically.
+
+Offline regressions cover one/two-line detection, VI/EN/KO/ZH/JA targeted repair, glyph width/line limits, text/span/planning-ID preservation, SRT round-trip and Undo/Redo. An opaque local cache fixture checks composite hard-link preservation, manual rate aliases, canonical SRT reopening and deletion tombstones; it does not decode or benchmark speech. Existing reflow lifecycle regressions guard worker cancellation and stale requests. Automatic QC remains read-only; empty text/ambiguous overlaps are not filled or trimmed automatically. UI menu clicks and real-provider rendering remain separate checks.
+
 ## Dubbing session smoke
 
 After building a TEST bundle, run the following with a new temporary directory:

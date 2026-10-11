@@ -8,6 +8,68 @@ enum SubtitleQualitySeverity: Int, Comparable, Equatable, Sendable {
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
+/// Explicit user repair, independent of the read-only analyzer. Unselected IDs
+/// remain stable so unrelated DUB/cache/selection identities are preserved.
+enum SubtitleQualityRepair {
+    static func repairLayout(
+        _ segments: [SRTSegment],
+        cueIDs: Set<Int>,
+        configuration: SubtitleLayoutConfiguration
+    ) -> [SRTSegment] {
+        guard !cueIDs.isEmpty, Set(segments.map(\.id)).count == segments.count else { return segments }
+        var config = configuration.clamped()
+        config.explicitBreakPolicy = .automatic
+        var nextID = segments.map(\.id).max() ?? 0
+        var output: [SRTSegment] = []
+        for cue in segments {
+            guard !Task.isCancelled else { return segments }
+            guard cueIDs.contains(cue.id), cue.startSeconds.isFinite, cue.endSeconds.isFinite,
+                  cue.startSeconds >= 0, cue.endSeconds > cue.startSeconds else {
+                output.append(cue); continue
+            }
+            let pieces = SubtitleLayoutEngine.layoutPieces(cue.text, configuration: config)
+            func content(_ text: String) -> String {
+                String(text.precomposedStringWithCanonicalMapping.filter { !$0.isWhitespace })
+            }
+            guard !pieces.isEmpty,
+                  pieces.allSatisfy({ !$0.issues.contains { $0.code == .lineOverflow || $0.code == .tooManyLines } }),
+                  content(pieces.map(\.text).joined()) == content(cue.text),
+                  cue.durationSeconds >= Double(pieces.count) * 0.04 else {
+                output.append(cue); continue
+            }
+            if pieces.count == 1 {
+                output.append(SRTSegmentEditor.withText(cue, text: pieces[0].text))
+                continue
+            }
+            guard nextID <= Int.max - (pieces.count - 1) else { return segments }
+            let weights = pieces.map { max(1, $0.text.filter { !$0.isWhitespace }.count) }
+            let total = Double(weights.reduce(0, +))
+            var cursor = cue.startSeconds
+            var replacements: [SRTSegment] = []
+            for (offset, piece) in pieces.enumerated() {
+                let end = offset == pieces.count - 1 ? cue.endSeconds
+                    : cursor + cue.durationSeconds * Double(weights[offset]) / total
+                if offset > 0 { nextID += 1 }
+                replacements.append(SRTSegment(id: offset == 0 ? cue.id : nextID, index: cue.index,
+                    timing: SRTTimecode.makeTiming(start: cursor, end: end),
+                    startSeconds: cursor, endSeconds: end, text: piece.text))
+                cursor = end
+            }
+            // Very uneven piece weights must not produce unreadable micro-cues.
+            guard replacements.allSatisfy({ $0.durationSeconds >= 0.04 - 0.000_001 }) else {
+                output.append(cue); continue
+            }
+            output.append(contentsOf: replacements)
+        }
+        guard !Task.isCancelled else { return segments }
+        guard output != segments else { return segments }
+        return output.enumerated().map { offset, cue in
+            SRTSegment(id: cue.id, index: offset + 1, timing: cue.timing,
+                startSeconds: cue.startSeconds, endSeconds: cue.endSeconds, text: cue.text)
+        }
+    }
+}
+
 enum SubtitleQualityIssueCode: String, Equatable, Sendable {
     case emptyText
     case lineOverflow

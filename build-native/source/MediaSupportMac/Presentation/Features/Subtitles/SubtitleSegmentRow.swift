@@ -87,14 +87,3 @@ struct SubtitleSegmentRow: View, Equatable {
             )
     }
 }
-
-extension SRTSegment: Equatable {
-    static func == (lhs: SRTSegment, rhs: SRTSegment) -> Bool {
-        lhs.id == rhs.id
-            && lhs.index == rhs.index
-            && lhs.timing == rhs.timing
-            && lhs.startSeconds == rhs.startSeconds
-            && lhs.endSeconds == rhs.endSeconds
-            && lhs.text == rhs.text
-    }
-}

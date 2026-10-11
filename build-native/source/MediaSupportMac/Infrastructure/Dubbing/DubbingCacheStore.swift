@@ -9,6 +9,60 @@ struct DubbingCacheUsage: Equatable, Sendable {
     static let empty = DubbingCacheUsage(allocatedBytes: 0, clipCount: 0, storedFileCount: 0)
 }
 
+/// Captured on the UI actor; file aliases run on the existing layout worker.
+/// Stable planning IDs map exactly to canonical SRT IDs, including composite audio.
+struct DubbingQualityRepairCacheSnapshot: Sendable {
+    let cache: DubbingCacheStore
+    let language: String
+    let voice: String?
+    let rate: Float
+    let provider: DubbingSpeechProvider
+    let model: String
+    let playbackRates: [String: Double]
+
+    private func fingerprint(_ cue: SRTSegment) -> String {
+        DubbingFingerprint.make(cue: cue, localeIdentifier: language, voiceIdentifier: voice,
+            rate: rate, provider: provider, modelIdentifier: model)
+    }
+
+    func unchangedFingerprints(previous: [SRTSegment], planned: [SRTSegment]) -> [(String, String)] {
+        let previousByID = Dictionary(uniqueKeysWithValues: previous.map { ($0.id, $0) })
+        return zip(planned, SRTSegmentEditor.reindexed(planned)).compactMap { stable, canonical in
+            guard let old = previousByID[stable.id], old.startSeconds == stable.startSeconds,
+                  old.endSeconds == stable.endSeconds,
+                  DubbingFingerprint.spokenText(old.text) == DubbingFingerprint.spokenText(stable.text) else { return nil }
+            return (fingerprint(old), fingerprint(canonical))
+        }
+    }
+
+    func preserveClips(previous: [SRTSegment], planned: [SRTSegment]) throws {
+        for (old, new) in unchangedFingerprints(previous: previous, planned: planned) where old != new {
+            try Task.checkCancellation()
+            guard cache.allowsReuse(for: new), let source = cache.existingClipURL(for: old) else { continue }
+            // Do not overwrite audio/rates needed by Undo or a different baked composite.
+            if let saved = playbackRates[new], saved != playbackRates[old] {
+                throw CocoaError(.fileWriteFileExists)
+            }
+            if source.pathExtension.lowercased() == "m4a", let destination = cache.existingClipURL(for: new) {
+                let originalFile = try FileManager.default.attributesOfItem(atPath: source.path)[.systemFileNumber] as? NSNumber
+                let targetFile = try FileManager.default.attributesOfItem(atPath: destination.path)[.systemFileNumber] as? NSNumber
+                guard originalFile != nil, originalFile == targetFile else { throw CocoaError(.fileWriteFileExists) }
+            }
+            _ = try cache.aliasClip(from: source, for: new)
+        }
+    }
+
+    func preservedRates(previous: [SRTSegment], planned: [SRTSegment]) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for (old, new) in unchangedFingerprints(previous: previous, planned: planned) {
+            if cache.allowsReuse(for: new), let saved = playbackRates[old], cache.existingClipURL(for: new) != nil {
+                result[new] = saved
+            }
+        }
+        return result
+    }
+}
+
 struct DubbingCacheStore: Sendable {
     let rootURL: URL
 

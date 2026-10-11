@@ -179,6 +179,21 @@ final class DubbingSessionModel: ObservableObject {
         refreshCacheUsage()
     }
 
+    func qualityRepairCacheSnapshot() -> DubbingQualityRepairCacheSnapshot {
+        DubbingQualityRepairCacheSnapshot(cache: cache, language: languageIdentifier,
+            voice: selectedVoiceIdentifier, rate: speechRate, provider: speechProvider,
+            model: selectedModelIdentifier, playbackRates: playbackRateByFingerprint)
+    }
+
+    func preserveQualityRepairRates(_ rates: [String: Double]) {
+        guard !rates.isEmpty else { return }
+        // Keep old keys for Undo and existing entries changed by another explicit rate edit.
+        for (fingerprint, rate) in rates where playbackRateByFingerprint[fingerprint] == nil {
+            playbackRateByFingerprint[fingerprint] = rate
+        }
+        persistPlaybackRates()
+    }
+
     func synchronize(cues: [SRTSegment]) {
         guard AppFeatureFlags.dubbingEnabled else { return }
         let cueIDs = Set(cues.map(\.id))

@@ -119,17 +119,19 @@ struct SubtitleTimelineWorkspace: View {
             && cueSelection.canDelete(totalCueCount: viewModel.segments.count)
     }
     private var canDeleteTimelineSelection: Bool {
-        timelineSelectionFocus == .dubbing ? !selectedDubbingIDs.isEmpty : canDeleteSelectedCues
+        timelineSelectionFocus == .dubbing
+            ? !selectedDubbingIDs.isEmpty && !viewModel.isApplyingTranscriptLayout
+            : canDeleteSelectedCues
     }
     private var canRenderSelectedDubbing: Bool {
-        AppFeatureFlags.dubbingEnabled && DubbingToolbarAvailability.canRenderSelected(
+        AppFeatureFlags.dubbingEnabled && !viewModel.isApplyingTranscriptLayout && DubbingToolbarAvailability.canRenderSelected(
             hasSubtitleSelection: timelineSelectionFocus == .subtitle && !selectedIDs.isEmpty,
             providerReady: dubbingSession.selectedProviderReady,
             isRendering: dubbingSession.isRendering
         )
     }
     private var canRenderAllDubbing: Bool {
-        AppFeatureFlags.dubbingEnabled && DubbingToolbarAvailability.canRenderAll(
+        AppFeatureFlags.dubbingEnabled && !viewModel.isApplyingTranscriptLayout && DubbingToolbarAvailability.canRenderAll(
             hasCues: !viewModel.segments.isEmpty,
             providerReady: dubbingSession.selectedProviderReady,
             isRendering: dubbingSession.isRendering
@@ -161,7 +163,7 @@ struct SubtitleTimelineWorkspace: View {
         return extensionType.conforms(to: .audio) && !extensionType.conforms(to: .movie)
     }
     private var canOpenOCR: Bool {
-        viewModel.mediaURL != nil && !isAudioOnlyMedia && !runner.isRunning
+        viewModel.mediaURL != nil && !isAudioOnlyMedia && !runner.isRunning && !viewModel.isApplyingTranscriptLayout
     }
     /// Skim là thao tác xem trước khi pause; playback đã có playhead native riêng.
     private var isSkimmingActive: Bool { skimming && !preview.isPlaying }
@@ -367,7 +369,7 @@ struct SubtitleTimelineWorkspace: View {
                     disabled: !canOpenOCR,
                     action: beginOCR
                 )
-                .help(L10n.string("Lấy sub từ video"))
+                .help(L10n.string("Đọc chữ đã dính trong hình video bằng OCR cục bộ."))
                 .accessibilityIdentifier("subtitle.ocr.import")
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
@@ -651,11 +653,11 @@ struct SubtitleTimelineWorkspace: View {
             Spacer(minLength: 10)
             HStack(spacing: AppTheme.controlGap) {
                 whisperToolButton
-                timelineToolButton("text.viewfinder", title: "Lấy sub từ video", active: isOCRSheetOpen, help: "Lấy sub từ video", action: beginOCR)
+                timelineToolButton("text.viewfinder", title: "Lấy sub từ video", active: isOCRSheetOpen, help: "Đọc chữ đã dính trong hình video bằng OCR cục bộ.", action: beginOCR)
                     .disabled(!canOpenOCR)
                     .accessibilityIdentifier("subtitle.ocr.toolbar")
                 timelineToolButton("doc.text", title: "Văn bản gốc", active: false, help: "Giữ nguyên chữ và khớp thời gian theo media") { beginScriptSubtitle() }
-                    .disabled(viewModel.mediaURL == nil || runner.isRunning)
+                    .disabled(viewModel.mediaURL == nil || runner.isRunning || viewModel.isApplyingTranscriptLayout)
                 SubtitleTranslateMenuButton(viewModel: viewModel)
                     .help("Dịch phụ đề")
                 if AppFeatureFlags.dubbingEnabled {
@@ -722,14 +724,7 @@ struct SubtitleTimelineWorkspace: View {
                     .disabled(!canDeleteTimelineSelection)
             }
             toolbarDivider
-            HStack(spacing: AppTheme.controlGap) {
-                timelineToolButton("captions.bubble", title: "Xuất SRT", active: false, help: "Xuất SRT") { viewModel.exportSRTToMediaFolder() }
-                    .disabled(viewModel.segments.isEmpty)
-                timelineToolButton("doc.plaintext", title: "Xuất TXT", active: false, help: "Xuất TXT") { viewModel.exportTXT() }
-                    .disabled(viewModel.segments.isEmpty)
-                timelineToolButton("film.stack", title: "Xuất XML", active: false, help: "Xuất Final Cut XML") { viewModel.exportFCPXML() }
-                    .disabled(viewModel.segments.isEmpty)
-            }
+            subtitleExportMenu
             Spacer(minLength: 10)
         }
         .padding(.horizontal, 10)
@@ -747,17 +742,69 @@ struct SubtitleTimelineWorkspace: View {
             .padding(.horizontal, 1)
     }
 
+    private var subtitleExportMenu: some View {
+        Menu {
+            Button { viewModel.exportSRTToMediaFolder() } label: { Label("Xuất SRT", systemImage: "captions.bubble") }
+            Button { viewModel.exportTXT() } label: { Label("Xuất TXT", systemImage: "doc.plaintext") }
+            Button { viewModel.exportFCPXML() } label: { Label("Xuất XML", systemImage: "film.stack") }
+        } label: {
+            Label("Xuất", systemImage: "square.and.arrow.up")
+                .font(AppFont.editorLabel).foregroundStyle(AppTheme.headlineText)
+                .padding(.horizontal, 9).frame(minHeight: AppTheme.compactControlHeight)
+                .background(AppTheme.controlFill, in: RoundedRectangle(cornerRadius: AppTheme.editorControlRadius))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(viewModel.segments.isEmpty || viewModel.isApplyingTranscriptLayout)
+        .help(L10n.string("Xuất SRT, TXT hoặc XML"))
+        .accessibilityIdentifier("subtitle.export.menu")
+    }
+
+    private var canRepairQualityLayout: Bool {
+        !runner.isRunning && !dubbingSession.isRendering && !viewModel.isApplyingTranscriptLayout && viewModel.liveEditDraft == nil
+    }
+
+    private var qualityLayoutCueIDs: Set<Int> {
+        Set(qualityIssues.filter { $0.code == .tooManyLines || $0.code == .lineOverflow }.map(\.cueID))
+    }
+
     private var subtitleQualityMenu: some View {
         Menu {
             if qualityIssues.isEmpty {
                 Text(viewModel.segments.isEmpty ? "Chưa có cue để kiểm tra" : "Không phát hiện lỗi")
             } else {
+                if viewModel.isApplyingTranscriptLayout {
+                    Text(L10n.string("Đang sắp xếp phụ đề…"))
+                }
+                Button(L10n.string("Sửa các cue vượt số dòng")) {
+                    cueSelection.clear()
+                    dubbingSelection.clear()
+                    viewModel.previewFocusSegmentID = nil
+                    viewModel.repairQualityCueLayout(ids: qualityLayoutCueIDs)
+                }
+                .disabled(!canRepairQualityLayout || qualityLayoutCueIDs.isEmpty)
+                .help(L10n.string("Giữ chữ và khoảng thời gian gốc; cue dài có thể được tách và cần lồng tiếng lại."))
+                Divider()
                 ForEach(qualityIssues.prefix(30)) { issue in
-                    Button {
-                        focusQualityIssue(issue)
+                    Menu {
+                        Button(L10n.string("Xem cue")) { focusQualityIssue(issue) }
+                        if issue.code == .tooManyLines || issue.code == .lineOverflow {
+                            Button(L10n.string("Sửa bố cục cue")) {
+                                focusQualityIssue(issue)
+                                viewModel.repairQualityCueLayout(ids: [issue.cueID])
+                            }
+                            .disabled(!canRepairQualityLayout)
+                            .help(L10n.string("Giữ chữ và khoảng thời gian gốc; cue dài có thể được tách và cần lồng tiếng lại."))
+                        }
+                        Button(L10n.string("Sửa cue thủ công")) {
+                            focusQualityIssue(issue)
+                            // Timing repair belongs to the selected Timeline cue; empty/layout text opens the editor.
+                            editingCueID = issue.code == .overlap ? nil : issue.cueID
+                        }
+                        .disabled(runner.isRunning || viewModel.isApplyingTranscriptLayout)
                     } label: {
                         Label(
-                            "Cue \(issue.cueID) · \(issue.message)",
+                            "Cue \(viewModel.segments.first { $0.id == issue.cueID }?.index ?? issue.cueID) · \(qualityMessage(issue))",
                             systemImage: issue.severity == .error ? "exclamationmark.octagon" : "exclamationmark.triangle"
                         )
                     }
@@ -791,6 +838,13 @@ struct SubtitleTimelineWorkspace: View {
         .accessibilityLabel(qualityIssues.isEmpty
             ? L10n.string("QC subtitle, không có lỗi")
             : L10n.format("QC subtitle, %d vấn đề", qualityIssues.count))
+    }
+
+    private func qualityMessage(_ issue: SubtitleQualityIssue) -> String {
+        if issue.code == .tooManyLines {
+            return L10n.format("Vượt %d dòng", viewModel.wrapStyle.clamped().maxLines)
+        }
+        return L10n.string(issue.message)
     }
 
     private var qualityMenuTint: Color {
@@ -854,7 +908,7 @@ struct SubtitleTimelineWorkspace: View {
                 Image(systemName: viewModel.isRunningWhisper ? "waveform.badge.mic" : "waveform.badge.mic")
                     .font(.system(size: AppTheme.compactIconSize, weight: .semibold))
                     .symbolEffect(.variableColor.iterative, options: .repeating, isActive: viewModel.isRunningWhisper && !reduceMotion)
-                Text("Chép lời")
+                Text(L10n.string("Lấy sub từ âm thanh"))
                     .font(AppFont.editorLabel)
                 if viewModel.isRunningWhisper {
                     Text("\(viewModel.whisperProgressPercent)%")
@@ -867,9 +921,9 @@ struct SubtitleTimelineWorkspace: View {
             .frame(minHeight: AppTheme.compactControlHeight)
         }
         .buttonStyle(TimelineToolbarButtonStyle(isActive: viewModel.isRunningWhisper))
-        .disabled(viewModel.mediaURL == nil || runner.isRunning)
-        .help(viewModel.isRunningWhisper ? "Đang chép lời: \(viewModel.whisperProgressPercent)%" : "Chép lời từ media")
-        .accessibilityLabel(viewModel.isRunningWhisper ? "Đang chép lời \(viewModel.whisperProgressPercent) phần trăm" : "Chép lời từ media")
+        .disabled(viewModel.mediaURL == nil || runner.isRunning || viewModel.isApplyingTranscriptLayout)
+        .help(viewModel.isRunningWhisper ? "Đang chép lời: \(viewModel.whisperProgressPercent)%" : L10n.string("Nghe lời nói trong video hoặc audio để tạo phụ đề."))
+        .accessibilityLabel(viewModel.isRunningWhisper ? "Đang chép lời \(viewModel.whisperProgressPercent) phần trăm" : L10n.string("Lấy sub từ âm thanh"))
     }
 
     private func timelineToolButton(
@@ -1676,14 +1730,14 @@ struct SubtitleTimelineWorkspace: View {
         return !providers.isEmpty
     }
     private func beginWhisper() {
-        guard !runner.isRunning else { return }
+        guard !runner.isRunning, !viewModel.isApplyingTranscriptLayout else { return }
         guard let mediaURL = viewModel.mediaURL else { chooseMedia(); return }
         viewModel.setWhisperDraftMedia(mediaURL)
         guard GroqCredentialStore.hasKey else { viewModel.openGroqSettings(); return }
         viewModel.runWhisper()
     }
     private func beginScriptSubtitle() {
-        guard !runner.isRunning else { return }
+        guard !runner.isRunning, !viewModel.isApplyingTranscriptLayout else { return }
         guard let mediaURL = viewModel.mediaURL else { chooseMedia(); return }
         viewModel.setScriptDraftMedia(mediaURL)
         isScriptSheetOpen = true
