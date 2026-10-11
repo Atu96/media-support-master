@@ -92,7 +92,26 @@ enum SubtitleBurnStyleTests {
         precondition(SubtitleEffectPreset.allCases.count == 7)
         precondition(!SubtitleEffectPreset.allCases.contains(.softSlide))
 
-        print("✓ Subtitle style regression OK — transition/effect độc lập, app-only không fade, FCPXML sạch")
+        var positioned = SubtitleBurnStyle()
+        precondition(positioned.resolvedFcpxmlPositionY == -414)
+        positioned.verticalPositionPercent = 50
+        precondition(positioned.marginBottom == 540 && positioned.resolvedFcpxmlPositionY > 0)
+        positioned.verticalPositionPercent = 1000
+        precondition(positioned.marginBottom == SubtitleBurnStyle.verticalPositionRange.upperBound)
+        positioned.fontSize = 96
+        let safeMargin = positioned.resolvedSubtitleBottomMargin(lineCount: 2)
+        precondition(safeMargin + 96 * 1.34 * 2 + 16 <= 1080 - 16 + 0.001)
+        let positionedCopy = try JSONDecoder().decode(SubtitleBurnStyle.self, from: JSONEncoder().encode(positioned))
+        precondition(positionedCopy.marginBottom == 960)
+        precondition(argumentMap(positionedCopy.fcpxmlCLIArgs)["--position-y"] == String(positioned.resolvedFcpxmlPositionY))
+        positioned.verticalPositionPercent = -.infinity
+        precondition(positioned.marginBottom == 960)
+        positioned.verticalPositionPercent = -100
+        precondition(positioned.marginBottom == SubtitleBurnStyle.verticalPositionRange.lowerBound)
+        let oldPosition = try JSONDecoder().decode(SubtitleBurnStyle.self, from: Data(#"{"marginBottom":92}"#.utf8))
+        precondition(oldPosition.marginBottom == 92 && oldPosition.resolvedFcpxmlPositionY == -370)
+
+        print("✓ Subtitle style regression OK — transition/effect, global vertical position/persistence, FCPXML")
     }
 
     private static func argumentMap(_ args: [String]) -> [String: String] {

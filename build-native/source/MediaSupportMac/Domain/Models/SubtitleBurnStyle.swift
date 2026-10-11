@@ -221,6 +221,24 @@ struct SubtitleBurnStyle: Codable, Equatable, Sendable {
     /// Phạm vi slider panel «Gắn sub vào video».
     static let boxCornerRadiusRange = 0...24
     static let boxMaxWidthPercentRange = 40...100
+    /// Bottom offset in the shared 1080-pixel reference canvas; stored in the existing project field.
+    static let verticalPositionRange = 16...960
+
+    var verticalPositionPercent: Double {
+        get { Double(marginBottom) / 10.8 }
+        set {
+            guard newValue.isFinite else { return }
+            marginBottom = Int((min(Double(Self.verticalPositionRange.upperBound),
+                max(Double(Self.verticalPositionRange.lowerBound), newValue * 10.8))).rounded())
+        }
+    }
+
+    /// Keep the whole text group in frame, including two-line/large-font cues near the top.
+    func resolvedSubtitleBottomMargin(lineCount: Int) -> Double {
+        let textHeight = max(Double(fontSize) * 1.34 * Double(max(1, lineCount)), Double(fontSize) * 1.42)
+        let maximum = max(0, 1080 - textHeight - 16 - 16)
+        return min(maximum, max(0, Double(marginBottom)))
+    }
 
     /// Cầu nối source/project cũ. Code mới phải dùng `textTransition` và
     /// `visualEffect`; setter này chỉ phục vụ migration/test tương thích.
@@ -550,11 +568,12 @@ struct SubtitleBurnStyle: Codable, Equatable, Sendable {
     /// Position Y FCP — lề đáy nhỏ (gần mép) → Y âm hơn. Khớp `convert_srt_fcpxml.py`.
     var resolvedFcpxmlPositionY: Int {
         let half = Self.fcpxmlCanvasHeight / 2.0
-        let delta = Double(marginBottom - Self.fcpxmlRefMarginBottom) * Self.fcpxmlMarginToYScale
+        // The Motion title supports two lines; reserve space for both near the top.
+        let delta = (resolvedSubtitleBottomMargin(lineCount: 2) - Double(Self.fcpxmlRefMarginBottom)) * Self.fcpxmlMarginToYScale
         let fontLift = Self.fcpxmlFontToYLift * Double(fontSize - Self.fcpxmlRefFontSize)
         let y = Double(Self.fcpxmlRefPositionY) + delta + fontLift
         let yMin = -half + 24
-        let yMax = -80.0
+        let yMax = half - 24
         let clamped = min(yMax, max(yMin, y))
         return Int(clamped.rounded())
     }

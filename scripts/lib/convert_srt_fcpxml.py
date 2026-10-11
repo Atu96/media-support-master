@@ -220,11 +220,12 @@ def margin_to_position_y(
     """Lề đáy preview (px @ height) → Position Y FCP."""
     h = int(height) if height else 1080
     half = h / 2.0
-    mb = int(margin_bottom)
+    text_height = max(int(font_size) * 1.34 * 2, int(font_size) * 1.42)
+    mb = max(0, min(int(margin_bottom), max(0, 1080 - text_height - 16 - 16)))
     y = REF_POS_Y + (mb - REF_MARGIN) * MARGIN_TO_Y_SCALE
     y += FONT_TO_Y_LIFT * (int(font_size) - REF_FONT_SIZE)
     y_min = -half + 24
-    y_max = -80.0
+    y_max = half - 24
     return int(round(max(y_min, min(y_max, y))))
 
 
@@ -356,7 +357,7 @@ def convert(
 
     # Lề đáy → Position Y. Ưu tiên --position-y từ app nếu khớp công thức (1 nguồn).
     if margin_bottom is not None:
-        mb = max(0, min(200, int(margin_bottom)))
+        mb = max(0, min(960, int(margin_bottom)))
         computed = margin_to_position_y(mb, height=height, font_size=font_size)
         # App gửi position-y cùng công thức — tin computed (tránh lệch version cũ)
         pos_y = computed

@@ -25,7 +25,7 @@ enum SubtitleCueLayerRenderer {
         )
         let center = CGPoint(
             x: renderSize.width / 2,
-            y: CGFloat(style.marginBottom) * scale + containerSize.height / 2
+            y: CGFloat(style.resolvedSubtitleBottomMargin(lineCount: lineCount)) * scale + containerSize.height / 2
         )
 
         let container = CALayer()

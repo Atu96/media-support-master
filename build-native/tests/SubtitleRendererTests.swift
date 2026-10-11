@@ -56,6 +56,32 @@ enum SubtitleRendererTests {
         }
         print("✓ Shared native layer: discrete reveal + bottom placement")
 
+        for size in [CGSize(width: 1920, height: 1080), CGSize(width: 1080, height: 1920), CGSize(width: 3840, height: 2160)] {
+            for font in [54, 96] {
+                for text in ["A subtitle", "First line\nSecond line", "One\nTwo\nThree"] {
+                    var positioned = SubtitleBurnStyle()
+                    positioned.fontSize = font
+                    let cue = SRTSegment(id: 10, index: 10, timing: "", startSeconds: 1, endSeconds: 3, text: text)
+                    var previousY: CGFloat = -.infinity
+                    for margin in [16, 48, 540, 960] {
+                        positioned.marginBottom = margin
+                        let layer = SubtitleCueLayerRenderer.makeCueLayer(segment: cue, style: positioned,
+                            renderSize: size, decorationDensity: 2)
+                        try check(layer.position.y >= previousY, "moving up reversed subtitle position")
+                        try check(layer.frame.minY >= 0 && layer.frame.maxY <= size.height - 16 * size.height / 1080 + 0.01,
+                                  "large/multiline subtitle clipped at top")
+                        previousY = layer.position.y
+                    }
+                }
+            }
+        }
+        print("✓ Global subtitle position: 1/2/3 lines, large font, landscape/portrait/4K safe bounds")
+
+        if CommandLine.arguments.count > 2, CommandLine.arguments[2] == "--position" {
+            try await positionExportSmoke(folder: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true))
+            return
+        }
+
         if CommandLine.arguments.count > 1 {
             let folder = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -108,7 +134,44 @@ enum SubtitleRendererTests {
         }
     }
 
-    static func brightPixels(_ image: CGImage) -> Int {
+    static func positionExportSmoke(folder: URL) async throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let input = folder.appendingPathComponent("source.mov")
+        try await sourceVideo(input)
+        let cues = [
+            SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0.3, endSeconds: 2.7, text: "A global subtitle"),
+            SRTSegment(id: 2, index: 2, timing: "", startSeconds: 3, endSeconds: 5.5, text: "First line\nSecond line")
+        ]
+        var baseline: [(count: Int, meanY: Double)] = []
+        for (name, margin) in [("bottom", 48), ("top", 960)] {
+            var style = SubtitleBurnStyle()
+            style.fontName = "Helvetica"; style.fontSize = 96; style.marginBottom = margin
+            style.textTransition = .none; style.visualEffect = .none
+            let output = folder.appendingPathComponent(name + ".mp4")
+            try await SubtitleVideoExporter.export(videoURL: input, outputURL: output, segments: cues, style: style)
+            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: output))
+            generator.requestedTimeToleranceBefore = .zero; generator.requestedTimeToleranceAfter = .zero
+            for (index, time) in [1.5, 4.5].enumerated() {
+                let (image, _) = try await generator.image(at: CMTime(seconds: time, preferredTimescale: 600))
+                let pixels = brightPixelStats(image)
+                try check(pixels.count > 150, "position export lost subtitle")
+                let bitmap = NSBitmapImageRep(cgImage: image)
+                try bitmap.representation(using: .png, properties: [:])!.write(to: folder.appendingPathComponent("\(name)-\(index + 1).png"))
+                if name == "bottom" { baseline.append(pixels) }
+                else {
+                    try check(abs(pixels.meanY - baseline[index].meanY) > Double(image.height) / 2,
+                              "global position did not move both exported cues")
+                    try check(abs(pixels.count - baseline[index].count) < max(30, baseline[index].count / 20),
+                              "high position clipped one/two-line text")
+                }
+            }
+        }
+        print("✓ Native position video smoke: both cues moved, one/two-line large text preserved")
+    }
+
+    static func brightPixels(_ image: CGImage) -> Int { brightPixelStats(image).count }
+
+    static func brightPixelStats(_ image: CGImage) -> (count: Int, meanY: Double) {
         let width = image.width, height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         bytes.withUnsafeMutableBytes { buffer in
@@ -118,7 +181,13 @@ enum SubtitleRendererTests {
                                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
-        return stride(from: 0, to: bytes.count, by: 4).filter { max(bytes[$0], bytes[$0+1], bytes[$0+2]) > 100 }.count
+        var count = 0
+        var sumY = 0
+        for offset in stride(from: 0, to: bytes.count, by: 4) where max(bytes[offset], bytes[offset + 1], bytes[offset + 2]) > 100 {
+            count += 1
+            sumY += offset / 4 / width
+        }
+        return (count, count == 0 ? 0 : Double(sumY) / Double(count))
     }
 
     static func sourceVideo(_ url: URL) async throws {

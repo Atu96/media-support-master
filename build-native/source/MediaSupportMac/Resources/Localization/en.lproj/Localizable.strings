@@ -260,6 +260,12 @@
 "Mật độ" = "Density";
 "Màu hiệu ứng" = "Effect color";
 "Lên trên" = "Upward";
+"Vị trí phụ đề" = "Subtitle position";
+"Áp dụng cho toàn bộ phụ đề" = "Applies to all subtitles";
+"Đưa phụ đề lên" = "Move subtitles up";
+"Đưa phụ đề xuống" = "Move subtitles down";
+"Đặt lại vị trí phụ đề" = "Reset subtitle position";
+"Kéo sang phải để đưa phụ đề lên, sang trái để đưa xuống." = "Drag right to move subtitles up, left to move them down.";
 "Từ trái" = "From left";
 "Từ phải" = "From right";
 "Chọn hiệu ứng %@" = "Choose %@ effect";

@@ -19,6 +19,8 @@ For non-Japanese text, local token/phrase context improves boundaries without re
 
 Changing line count or font size schedules cancellable work off the main actor. Only the newest result with a matching project/text/style snapshot can commit to undo history. It does not transcribe again or call an online model.
 
+The Style inspector also exposes a global **Subtitle position** slider, up/down buttons and a position-only reset. It uses the existing persisted `marginBottom` on the 1080 reference canvas (16–960), without editing text, timing, line breaks or dubbing cache identities. Shared Preview/video layers clamp the complete text box inside the frame. FCPXML reserves space for two lines and uses matching Swift/Python position math; original default and lower positions remain compatible.
+
 Burned-in subtitle OCR uses local Vision with a user-selected image region and automatic language detection. A bounded frame worker produces complete timed cues through a streaming accumulator; only a matching project snapshot commits to the existing subtitle session. See [subtitle OCR](subtitle-ocr.md). Automatic sibling-SRT restoration respects a newer working transcript.
 
 ## Providers and data

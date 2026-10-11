@@ -44,6 +44,18 @@ Local agent/checkpoint/archive notes remain outside Git. A fresh clone uses thes
 
 The OCR hook is documented under [subtitle OCR](subtitle-ocr.md). `test.command` also compiles/runs native `SubtitleOCRTests` with Vision and synthetic H.264 video. To retain fixtures, run `./build-native/.test-out/SubtitleOCRTests /private/tmp/msm-ocr-fixtures-new` with a new directory, then run the TEST binary with `MSM_SUBTITLE_OCR_SMOKE_DIR=/private/tmp/msm-ocr-fixtures-new`. This exercises the packaged OCR→SRT path without Keychain or network. The native test covers auto VI/EN/JA/KO/ZH, crop, rotation, one/two lines, closer sampling and cancellation.
 
+## Global subtitle position
+
+Open **Subtitle style** in the right inspector. The **Subtitle position** control appears above both Design and Effects: drag right/up to raise every subtitle, left/down to lower them, or use reset to restore the original 48-pixel offset. The value is a percentage of the 1080 reference canvas; near the top, the text box stays in frame even for large fonts or multiple lines. This changes style only and is saved with the existing project settings.
+
+The offline suite covers persisted position/default compatibility, finite/bounded input, native layer placement for one/two/three lines in landscape/portrait/4K and 24 native/Python FCPXML differential fixtures. To test actual local video output after the suite compiles the harness, use a new temporary directory:
+
+```sh
+./build-native/.test-out/SubtitleRendererTests /private/tmp/msm-position-export-new --position
+```
+
+It renders bottom/top variants with a large font and one/two-line cues, compares movement and retained text pixels, and writes PNG frames. No credentials/network/user media are used. UI drag behavior and real-video quality remain separate checks.
+
 ## Dubbing session smoke
 
 After building a TEST bundle, run the following with a new temporary directory:

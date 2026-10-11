@@ -25,5 +25,5 @@ for native in sorted(root.glob('*.fcpxml')):
     old.find('.//project').set('name','sample')
     assert canonical(old)==canonical(new),f'FCPXML contract changed: {native.name}'
     count+=1
-assert count==21
+assert count==24
 print(f'✓ Native FCPXML matches established converter: {count} FPS/style/multilingual fixtures')

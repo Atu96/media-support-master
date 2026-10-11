@@ -167,5 +167,16 @@ enum NativeIntegratedToolsTests {
                 try SRTDocument.renderSRT([cue]).write(to:directory.appendingPathComponent(stem+".srt"),atomically:true,encoding:.utf8)
             }
         }
+        for margin in [16, 540, 960] {
+            var style = SubtitleBurnStyle()
+            style.fontSize = 96
+            style.marginBottom = margin
+            let xml = try NativeFCPXMLExporter.render(segments: [cue], name: "sample", style: style,
+                templateURL: URL(fileURLWithPath: "/tmp/template.moti"))
+            let stem = "vertical-\(margin)"
+            try xml.write(to: directory.appendingPathComponent(stem + ".fcpxml"), atomically: true, encoding: .utf8)
+            try JSONEncoder().encode(style.fcpxmlCLIArgs).write(to: directory.appendingPathComponent(stem + ".json"))
+            try SRTDocument.renderSRT([cue]).write(to: directory.appendingPathComponent(stem + ".srt"), atomically: true, encoding: .utf8)
+        }
     }
 }

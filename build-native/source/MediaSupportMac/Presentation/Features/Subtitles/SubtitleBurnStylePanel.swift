@@ -71,6 +71,8 @@ struct SubtitleBurnStylePanel: View {
                 SubtitleBurnStylePanelHeader()
             }
 
+            verticalPositionSection
+
             Picker("", selection: $inspectorPage) {
                 ForEach(SubtitleStyleInspectorPage.allCases) { page in
                     Text(L10n.string(page.localizationKey)).tag(page)
@@ -138,12 +140,6 @@ struct SubtitleBurnStylePanel: View {
                             .foregroundStyle(AppTheme.mutedText)
                     }
                     .accessibilityElement(children: .combine)
-                }
-                compactSliderRow("Lề đáy", value: Binding(
-                    get: { Double(style.marginBottom) },
-                    set: { style.marginBottom = Int($0) }
-                ), range: 16...120, format: "%.0f px") {
-                    "\(style.marginBottom) px"
                 }
             }
 
@@ -277,6 +273,62 @@ struct SubtitleBurnStylePanel: View {
                 style.fps = "24"
             }
         }
+    }
+
+    private var verticalPositionSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label(L10n.string("Vị trí phụ đề"), systemImage: "arrow.up.and.down")
+                    .font(AppFont.label)
+                Spacer()
+                Button { style.marginBottom = 48 } label: {
+                    Image(systemName: "arrow.counterclockwise").frame(width: 24, height: 24)
+                }
+                .buttonStyle(AppPressableButtonStyle())
+                .help(L10n.string("Đặt lại vị trí phụ đề"))
+                .accessibilityLabel(L10n.string("Đặt lại vị trí phụ đề"))
+            }
+            HStack(spacing: 8) {
+                verticalPositionButton("chevron.down", help: "Đưa phụ đề xuống", delta: -12)
+                SubtitleStyleGlassSlider(value: Binding(
+                    get: { style.verticalPositionPercent },
+                    set: { style.verticalPositionPercent = $0 }
+                ), range: Double(SubtitleBurnStyle.verticalPositionRange.lowerBound) / 10.8...Double(SubtitleBurnStyle.verticalPositionRange.upperBound) / 10.8)
+                .frame(height: 22)
+                .help(L10n.string("Kéo sang phải để đưa phụ đề lên, sang trái để đưa xuống."))
+                .accessibilityLabel(L10n.string("Vị trí phụ đề"))
+                .accessibilityValue(Text("\(Int(style.verticalPositionPercent.rounded()))%"))
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: moveVerticalPosition(by: 12)
+                    case .decrement: moveVerticalPosition(by: -12)
+                    @unknown default: break
+                    }
+                }
+                verticalPositionButton("chevron.up", help: "Đưa phụ đề lên", delta: 12)
+                Text("\(Int(style.verticalPositionPercent.rounded()))%")
+                    .font(AppFont.caption).monospacedDigit().frame(width: 35, alignment: .trailing)
+            }
+            Text(L10n.string("Áp dụng cho toàn bộ phụ đề"))
+                .font(AppFont.caption).foregroundStyle(AppTheme.mutedText)
+        }
+        .padding(9)
+        .background(AppTheme.controlFill, in: RoundedRectangle(cornerRadius: AppTheme.editorControlRadius))
+    }
+
+    private func verticalPositionButton(_ icon: String, help: String, delta: Int) -> some View {
+        Button { moveVerticalPosition(by: delta) } label: {
+            Image(systemName: icon).font(.system(size: 11, weight: .semibold)).frame(width: 24, height: 24)
+        }
+        .buttonStyle(AppPressableButtonStyle())
+        .help(L10n.string(help))
+        .accessibilityLabel(L10n.string(help))
+        .disabled(delta < 0 ? style.marginBottom <= SubtitleBurnStyle.verticalPositionRange.lowerBound
+                           : style.marginBottom >= SubtitleBurnStyle.verticalPositionRange.upperBound)
+    }
+
+    private func moveVerticalPosition(by delta: Int) {
+        style.verticalPositionPercent = (Double(style.marginBottom) + Double(delta)) / 10.8
     }
 
     private var effectsPage: some View {
