@@ -651,7 +651,7 @@ struct SubtitleTimelineWorkspace: View {
             Spacer(minLength: 10)
             HStack(spacing: AppTheme.controlGap) {
                 whisperToolButton
-                timelineToolButton("text.viewfinder", active: isOCRSheetOpen, help: "Lấy sub từ video", action: beginOCR)
+                timelineToolButton("text.viewfinder", title: "Lấy sub từ video", active: isOCRSheetOpen, help: "Lấy sub từ video", action: beginOCR)
                     .disabled(!canOpenOCR)
                     .accessibilityIdentifier("subtitle.ocr.toolbar")
                 timelineToolButton("doc.text", title: "Văn bản gốc", active: false, help: "Giữ nguyên chữ và khớp thời gian theo media") { beginScriptSubtitle() }

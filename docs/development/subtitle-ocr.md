@@ -4,7 +4,7 @@ This feature is in the current source/TEST build after 1.0.1. It requires a new 
 
 ## User workflow
 
-1. Import a video into the main Timeline workspace. Click **Extract video subtitles** beneath the files in the left **Media & subtitles** panel, or click the text-viewfinder icon beside **Transcribe** in the middle toolbar. Both open the region-selection sheet for the currently imported video. The toolbar entry remains available when the import panel is hidden. Audio-only files and an active engine job disable OCR; an API key is not required.
+1. Import a video into the main Timeline workspace. Click **Extract video subtitles** beneath the files in the left **Media & subtitles** panel, or the button with the same label and text-viewfinder icon beside **Transcribe** in the middle toolbar. Both open the region-selection sheet for the currently imported video. The toolbar entry remains available when the import panel is hidden. Audio-only files and an active engine job disable OCR; an API key is not required.
 2. Move the preview-frame slider to a frame containing subtitles. Drag on the displayed image to select their area; **Bottom area** restores the initial region.
 3. Automatic detection focuses on Vietnamese, English, Japanese, Korean and Chinese, using the OCR locales actually supported by the installed OS.
 4. **Scan subtitles** runs locally. **Scan more closely** increases sampling from two to four frames per second. **Stop scan** or closing the sheet cancels processing.
