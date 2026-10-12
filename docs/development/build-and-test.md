@@ -1,5 +1,9 @@
 # Build and test
 
+## Subtitle comparison and original text priority
+
+Core fixtures cover explicit time-group choices, missing/one-to-many cues, invalid times, stable IDs and conservative existing-cue script mapping across five languages. For the packaged no-key fake-session check, set `MSM_SUBTITLE_COMPARISON_SMOKE_DIR` to a fresh temporary directory and run the TEST bundle's `Contents/MacOS/MediaSupportMac`. Expected marker: `COMPARISON_SMOKE_OK` with private staging, explicit choice, Undo, cancellation/stale preservation, one-time/suppressible offers and script text/timing preservation. Release ignores this hook. It does not initialize the app UI, touch personal projects, read Keychain or call cloud services. The native OCR and API service contracts have their separate gates; UI clicks and real-media accuracy require focused review. See [workflow](subtitle-comparison.md).
+
 ## Requirements
 
 - Apple silicon Mac; deployment target macOS 15 or later.

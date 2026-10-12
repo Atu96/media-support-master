@@ -34,7 +34,8 @@ extension SubtitleViewModel {
     var canRunScriptAlign: Bool {
         scriptDraftMediaURL != nil
             && !scriptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && canRunEngine
+            && (comparison.canReuseScript || canRunEngine)
+            && !comparison.isRunning && !isApplyingTranscriptLayout
     }
 
     var canOpenEditTab: Bool {

@@ -10,7 +10,7 @@
 | **Lấy sub từ video** | Chữ phụ đề đã dính trong hình | OCR cục bộ đọc vùng chữ bạn chọn, ghép thành cue và SRT rời. Không nghe âm thanh, không cần key. |
 | **Tạo sub từ văn bản** | Đã có kịch bản hoặc lời thoại | Nhập/dán văn bản, khớp thời gian theo lời nói trong video/audio. Nội dung văn bản là nguồn chuẩn. |
 
-Nạp video/audio trước khi dùng các nút. **Tạo sub từ văn bản** mở cửa sổ nhập kịch bản: chọn ngôn ngữ hoặc Tự động, dán nội dung rồi bấm **Tạo sub**. Luồng khớp dùng Whisper Offline nhúng và cần model riêng đã tải/import trong Cài đặt; người dùng không cần cài Python/Homebrew/FFmpeg cho luồng hiện hành. Xem [công cụ tích hợp](integrated-tools.md).
+Nạp video/audio trước khi dùng các nút. **Tạo sub từ văn bản** mở cửa sổ nhập kịch bản: chọn ngôn ngữ hoặc Tự động, dán nội dung hoặc **Nhập TXT**, rồi bấm **Tạo sub**. Nếu đã có bản sub gốc trong cùng dự án, app ưu tiên chữ người dùng, thử dùng lại mốc cue khi khớp đủ và giữ nguyên thời gian; không chép lời lại/không cần model. Lệch nhiều thì giữ sub hiện có và báo để kiểm tra. Khi chưa có bản gốc, luồng khớp âm thanh vẫn dùng Whisper Offline nhúng và cần model riêng đã tải/import trong Cài đặt; người dùng không cần cài Python/Homebrew/FFmpeg. Xem [công cụ tích hợp](integrated-tools.md).
 
 Tên nút **Tạo sub từ văn bản** thay cho **Văn bản gốc** trên thanh công cụ. Các nhãn chỉ bản transcript gốc/bản dịch vẫn giữ ý nghĩa cũ.
 
@@ -25,6 +25,16 @@ Tên nút **Tạo sub từ văn bản** thay cho **Văn bản gốc** trên than
 App hiện dành cho Mac Apple Silicon, macOS15 trở lên. OCR dùng Vision cục bộ, không yêu cầu Apple Intelligence hay model Whisper. Các ngôn ngữ OCR có sẵn phụ thuộc macOS; app tập trung Việt/Anh/Nhật/Hàn/Trung theo danh sách hệ điều hành hỗ trợ. Chưa kiểm thực tế trên mọi phiên bản macOS/mẫu máy.
 
 Chữ rõ và vùng chọn sạch là điều kiện thuận lợi. Chữ nhỏ/mờ, font cách điệu, nền phức tạp hoặc chữ hiện rất nhanh có thể cần sửa. Mặc định quét2 khung hình/giây; **Quét kỹ hơn** dùng4 khung hình/giây, không khôi phục được chữ đã mờ. Timing ước tính theo khung hình, chưa đối chiếu âm thanh. Kiểm tra clip mẫu đạt không phải cam kết độ chính xác cho mọi video. Xem [chi tiết OCR và giới hạn kiểm tra](subtitle-ocr.md).
+
+## Đối chiếu OCR và âm thanh
+
+Sau khi lấy sub xong, video có lời mời lấy thêm bản bổ trợ từ nguồn còn lại. **Để sau** bỏ qua; **Không nhắc lại** lưu lựa chọn. Sau OCR, đóng cửa sổ quét mới hiện lời mời. Audio thuần không gợi ý OCR và lần chạy bổ trợ không hỏi tiếp.
+
+Menu **Đối chiếu** trên thanh công cụ luôn cho mở lại khi đã có sub, kể cả tắt lời mời. OCR vẫn chọn vùng/quét cục bộ; âm thanh cho chọn Groq cloud (có dùng hạn mức khi bấm chạy) hoặc Whisper Offline đã tải.
+
+Hai bản giữ riêng cho đến khi bấm **Áp dụng lựa chọn**. Chọn bản đúng theo từng nhóm thời gian; mặc định giữ hiện có. Có thể xem/nghe video, lọc khác biệt và xem ngôn ngữ của hai nguồn. Một nhóm có thể chứa nhiều cue vì hai nguồn ngắt câu khác nhau. Chọn bản bổ trợ dùng cả chữ và timing của nhóm đó, không nội suy thời gian mới. Chữ trên video có thể là bản dịch; app không tự kết luận nguồn nào đúng.
+
+Áp dụng có **Hoàn tác**. Hủy/lỗi/đổi dự án hoặc sửa cue giữa chừng giữ bản đang chỉnh. Cue giữ nguyên lời/span còn dùng được audio; cue đổi chữ có thể cần lồng lại. [Chi tiết và kiểm tra](subtitle-comparison.md).
 
 ## Kiểm tra và sửa QC
 

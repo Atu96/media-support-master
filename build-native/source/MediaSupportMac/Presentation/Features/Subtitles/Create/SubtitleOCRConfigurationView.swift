@@ -5,6 +5,7 @@ struct SubtitleOCRConfigurationView: View {
     let media: URL
     @ObservedObject var controller: SubtitleOCRCreateController
     let canRun: Bool
+    var forComparison = false
     @Environment(\.dismiss) private var dismiss
     @State private var region = SubtitleOCRRegion.lower
     @State private var image: CGImage?
@@ -58,7 +59,7 @@ struct SubtitleOCRConfigurationView: View {
                 if controller.isRunning {
                     Button("Dừng quét") { controller.cancel() }.buttonStyle(.bordered)
                 } else {
-                    Button("Quét phụ đề") { controller.run(media: media, region: region, interval: accurateTiming ? 0.25 : 0.5) }
+                    Button("Quét phụ đề") { controller.run(media: media, region: region, interval: accurateTiming ? 0.25 : 0.5, comparison: forComparison) }
                         .buttonStyle(.borderedProminent).tint(AppTheme.accentBlue)
                         .disabled(!canRun || image == nil)
                 }

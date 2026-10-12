@@ -332,12 +332,22 @@ struct SubtitleScriptComposer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Tạo sub từ văn bản")
-                .font(AppFont.sectionTitle)
-                .foregroundStyle(AppTheme.headlineText)
+            HStack {
+                Text("Tạo sub từ văn bản").font(AppFont.sectionTitle).foregroundStyle(AppTheme.headlineText)
+                Spacer()
+                Button("Nhập TXT") {
+                    FilePickerHelper.pickFile(allowedTypes: [.plainText]) { url in
+                        if let text = try? String(contentsOf: url, encoding: .utf8) { viewModel.scriptText = text }
+                    }
+                }
+            }
             Picker("Ngôn ngữ", selection: $viewModel.scriptAlignmentLanguage) {
                 ForEach(ScriptAlignmentLanguage.allCases) { Text(L10n.string($0.label)).tag($0) }
             }
+            Text(L10n.string(viewModel.whisperComplete && !viewModel.segments.isEmpty && viewModel.activeTranscriptVariant == .original
+                ? "Ưu tiên chữ trong văn bản gốc; dùng lại thời gian cue đã có khi khớp đủ. Không chép lời lại."
+                : "Dán văn bản chuẩn; app giữ nguyên chữ và dùng âm thanh để khớp thời gian."))
+                .font(AppFont.caption).foregroundStyle(AppTheme.mutedText).fixedSize(horizontal: false, vertical: true)
             TextEditor(text: $viewModel.scriptText)
                 .font(AppFont.body)
                 .frame(minHeight: 240)
@@ -354,8 +364,10 @@ struct SubtitleScriptComposer: View {
             }
         }
         .padding(20)
-        .frame(width: 520, height: 400)
+        .frame(width: 560, height: 440)
         .background(AppShellGradient())
+        .onAppear { viewModel.refreshScriptLanguageDetection() }
+        .onChange(of: viewModel.scriptText) { _, _ in viewModel.refreshScriptLanguageDetection() }
     }
 }
 

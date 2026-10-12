@@ -1,5 +1,7 @@
 # Architecture
 
+Optional subtitle comparison is owned by `SubtitleComparisonController` behind a session seam. Secondary OCR/audio stages output separately, groups time overlaps with `SubtitleEvidenceComparison`, and applies only explicit per-group choices as one Undo. Snapshot/cancellation prevents stale writes; no recognition or paid fallback starts from a prompt. Original-text input can reuse whole existing original-cue spans through `ExistingCueScriptMapper` when fully matched; it preserves user wording/timing and rejects ambiguous mapping. Existing fresh audio/Japanese alignment is unchanged. See [workflow details](subtitle-comparison.md).
+
 Media Support Master is a native AppKit/SwiftUI app. Source lives in `build-native/source/MediaSupportMac`.
 
 | Layer | Responsibility |

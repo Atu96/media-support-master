@@ -86,6 +86,23 @@ final class MediaEngineService: ObservableObject, MediaEngineServing {
         }
     }
 
+    /// A private staging URL is supplied by the comparison owner; never ingest here.
+    func runComparisonSpeechSRT(for mediaURL: URL, output: URL, sourceLang: String, offline: Bool) async {
+        await runner.runTask(title: L10n.string("Đối chiếu bằng âm thanh")) {
+            let progress: @Sendable (String) -> Void = { line in
+                Task { @MainActor in self.runner.appendLog(line) }
+            }
+            if offline {
+                try await OfflineWhisperService.transcribeToSRT(mediaURL: mediaURL, outputURL: output,
+                    sourceLanguage: sourceLang, wrapStyle: SubtitleWrapStyle.load(), progress: progress)
+            } else {
+                try await GroqSpeechService.transcribeToSRT(mediaURL: mediaURL, outputURL: output,
+                    sourceLanguage: sourceLang, model: GroqModelPreferences.selectedSpeechModel,
+                    wrapStyle: SubtitleWrapStyle.load(), progress: progress)
+            }
+        }
+    }
+
     func runDetectMediaLanguage(for mediaURL: URL) async {
         await runner.runTask(title:"Nhận diện ngôn ngữ — \(mediaURL.lastPathComponent)") {
             let record=try await NativeWhisperRuntime.detectLanguage(media:mediaURL) { line in

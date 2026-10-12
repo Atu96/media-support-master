@@ -14,6 +14,8 @@ This extracts text visible in the picture. It does not remove that text from the
 
 ## Ownership and execution
 
+For an optional second source after OCR/audio, use the **Compare** menu or the post-completion offer. Supplementary OCR stages its result for review instead of committing to the transcript. The existing primary OCR action still creates the original transcript. See [comparison and original text priority](subtitle-comparison.md).
+
 | Responsibility | Owner |
 |---|---|
 | Normalized top-left crop and streaming timing/change accumulator | `Domain/SubtitleTiming/OCRSubtitleAccumulator.swift` |

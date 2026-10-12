@@ -37,7 +37,7 @@ final class SubtitleOCRCreateController: ObservableObject {
         if isRunning, !isCommitting { cancel() }
     }
 
-    func run(media: URL, region: SubtitleOCRRegion, interval: Double) {
+    func run(media: URL, region: SubtitleOCRRegion, interval: Double, comparison: Bool = false) {
         guard !isRunning, !session.engine.isRunning else { return }
         session.preview.pause()
         let originalMedia = session.mediaURL
@@ -55,6 +55,7 @@ final class SubtitleOCRCreateController: ObservableObject {
         message = L10n.string("Đang đọc chữ trong vùng đã chọn…")
         task = Task { [weak self] in
             guard let self else { return }
+            var comparisonResult: SubtitleOCRResult?
             await session.runner.runTask(title: L10n.string("Lấy phụ đề từ hình ảnh")) { [self] in
                 let result = try await SubtitleOCRService.scan(media: media, region: region, interval: interval) { [weak controller = self] progress, count in
                     await controller?.update(progress: progress, count: count, generation: id)
@@ -65,6 +66,12 @@ final class SubtitleOCRCreateController: ObservableObject {
                       self.session.srtURL == originalSRT, self.session.liveEditDraft?.id == originalDraft?.id,
                       self.session.liveEditDraft?.text == originalDraft?.text else {
                     throw CancellationError()
+                }
+                if comparison {
+                    comparisonResult = result
+                    self.percent = 100; self.cueCount = result.segments.count; self.succeeded = true
+                    self.message = L10n.string("Đã lấy bản bổ trợ; phụ đề hiện có được giữ nguyên.")
+                    return
                 }
                 // Commit only a complete scan, directly to the canonical working transcript.
                 self.isCommitting = true
@@ -105,6 +112,8 @@ final class SubtitleOCRCreateController: ObservableObject {
             }
             self.isRunning = false
             self.task = nil
+            if let comparisonResult { self.session.comparison.receiveOCR(comparisonResult) }
+            else if self.succeeded { self.session.didCompleteSubtitleSource(.ocr) }
         }
     }
 

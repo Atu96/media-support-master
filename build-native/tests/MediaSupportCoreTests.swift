@@ -93,6 +93,9 @@ enum MediaSupportCoreTests {
         run("QC giữ cache composite và tốc độ khi mở lại SRT", testQualityDubbingReindexCache)
         run("OCR giữ chữ, blank/gap, timecode và loại jitter một mẫu", testOCRSubtitleTiming)
         run("Chọn vùng OCR theo hình đang hiển thị, clamp ngoài biên", testOCRRegionSelection)
+        run("Đối chiếu giữ bản hiện có, ghép nhóm một-nhiều và cue thiếu", testSubtitleEvidenceComparison)
+        run("Đối chiếu từ chối timing hỏng và chồng thời gian", testSubtitleEvidenceInvalidTiming)
+        run("Văn bản chuẩn dùng lại cue đa ngôn ngữ, giữ chữ và thời gian", testExistingCueScriptPriority)
         run("Chép lời dài tách cue theo 1/2 dòng, giữ timing", testTranscriptPostProcessor)
         run("Chép lời Việt gom mảnh STT thành cue đọc được", testVietnameseSpeechChunkCoalescing)
         run("Dọn cue gom mảnh ngắn qua khoảng lặng ngắn", testShortGapSpeechChunkCoalescing)
@@ -2910,6 +2913,59 @@ enum MediaSupportCoreTests {
         let outside = SubtitleOCRRegion(x: -5, y: 5, width: 4, height: 2).rect
         try expect(outside.minX >= 0 && outside.minY >= 0 && outside.maxX <= 1 && outside.maxY <= 1,
                    "OCR crop không được vượt ảnh")
+    }
+
+    private static func testSubtitleEvidenceComparison() throws {
+        let current = [segment(id: 1, start: 0, end: 2, text: "A wrong word"),
+                       segment(id: 2, start: 3, end: 4, text: "Keep this"),
+                       segment(id: 3, start: 6, end: 7, text: "Current only")]
+        let other = [segment(id: 1, start: 0.1, end: 1, text: "A correct"),
+                     segment(id: 2, start: 1, end: 2.1, text: "word"),
+                     segment(id: 3, start: 3, end: 4, text: "Keep this"),
+                     segment(id: 4, start: 8, end: 9, text: "Candidate only")]
+        let groups = try SubtitleEvidenceComparison.groups(current: current, candidate: other)
+        try expect(groups.count == 4 && groups[0].current.count == 1 && groups[0].candidate.count == 2,
+                   "one-to-many must be one review choice")
+        try expect(try SubtitleEvidenceComparison.selected(groups, candidateIDs: []) == current,
+                   "no choices must preserve current and omit unmatched candidate")
+        let planned = try SubtitleEvidenceComparison.planned(groups, candidateIDs: [0, 3])
+        try expect(planned.map(\.text) == ["A correct", "word", "Keep this", "Current only", "Candidate only"], "choice mismatch")
+        try expect(planned[2].id == 2 && planned[0].id < 0, "stable IDs must preserve unchanged DUB aliases")
+        let output = try SubtitleEvidenceComparison.selected(groups, candidateIDs: [0, 3])
+        try expect(output.map(\.id) == [1,2,3,4,5] && output[1].endSeconds == 2.1, "must use actual chosen timing")
+        let identical = try SubtitleEvidenceComparison.groups(current: [current[1]], candidate: [other[2]])
+        try expect(identical.count == 1 && !identical[0].differs, "identical rows shouldn't be differences")
+    }
+
+    private static func testSubtitleEvidenceInvalidTiming() throws {
+        for bad in [[segment(id: 1, start: 0, end: 2, text: "x"), segment(id: 2, start: 1, end: 3, text: "y")],
+                    [SRTSegment(id: 1, index: 1, timing: "00:00:00,000 --> 00:00:02,000", startSeconds: .nan, endSeconds: 2, text: "x")],
+                    [segment(id: 1, start: 1, end: 0, text: "x")],
+                    [segment(id: 1, start: 0, end: 1, text: " ")]] {
+            do { try SubtitleEvidenceComparison.validate(bad); throw TestFailure(description: "invalid accepted") }
+            catch is SubtitleEvidenceError { }
+        }
+    }
+
+    private static func testExistingCueScriptPriority() throws {
+        for (language, first, second) in [("vi", "Xin chào bạn.", "Hẹn gặp lại."),
+                                         ("en", "Hello my friend.", "See you later."),
+                                         ("ko", "안녕하세요 친구.", "다음에 만나요."),
+                                         ("zh", "你好朋友。", "下次见。"),
+                                         ("ja", "こんにちは。", "また会いましょう。") ] {
+            let cues = [segment(id: 5, start: 1, end: 3, text: first), segment(id: 8, start: 4, end: 6, text: second)]
+            let script = first + "\n" + second
+            let result = try ExistingCueScriptMapper.replace(script: script, cues: cues, language: language)
+            try expect(result.map(\.timing) == cues.map(\.timing) && result.map(\.id) == [5,8], "must preserve cue evidence \(language)")
+            try expect(result.map(\.text).joined().filter { !$0.isWhitespace } == script.filter { !$0.isWhitespace }, "script content lost")
+        }
+        let cue = segment(id: 1, start: 2, end: 5, text: "The little cot is sleeping.")
+        let fixed = try ExistingCueScriptMapper.replace(script: "The little cat is sleeping.", cues: [cue], language: "en")
+        try expect(fixed[0].text == "The little cat is sleeping." && fixed[0].timing == cue.timing, "small ASR typo should use canonical script")
+        do {
+            _ = try ExistingCueScriptMapper.replace(script: "An entirely different story.", cues: [cue], language: "en")
+            throw TestFailure(description: "mismatch must not assign guessed timing")
+        } catch is SubtitleEvidenceError { }
     }
 
     private static func testDubbingDurationCache() async throws {

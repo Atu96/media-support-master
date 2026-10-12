@@ -117,6 +117,7 @@ final class SubtitleWhisperCreateController {
 
                 // Persist không chặn hiển thị.
                 session.persistProjectSession()
+                session.didCompleteSubtitleSource(.audio)
             } else {
                 session.whisperProgressPercent = 100
                 session.isWhisperJobInFlight = false

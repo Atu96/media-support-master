@@ -45,4 +45,5 @@ protocol SubtitleCreateSession: AnyObject {
     func languageDisplayName(_ code: String) -> String
     func presentLastCloudAlertIfNeeded()
     func presentWhisperCloudAlertIfNeeded()
+    func didCompleteSubtitleSource(_ source: SubtitleEvidenceSource)
 }

@@ -168,7 +168,7 @@ struct SubtitleTimelineWorkspace: View {
     /// Skim là thao tác xem trước khi pause; playback đã có playhead native riêng.
     private var isSkimmingActive: Bool { skimming && !preview.isPlaying }
 
-    var body: some View {
+    private var workspaceContent: some View {
         VStack(spacing: 0) {
             workspaceHeader
             VSplitView {
@@ -213,7 +213,10 @@ struct SubtitleTimelineWorkspace: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .onAppear {
+    }
+
+    private var observedWorkspace: some View {
+        workspaceContent.onAppear {
             installShortcuts()
             reloadWaveform()
             refreshSubtitleQuality()
@@ -277,8 +280,17 @@ struct SubtitleTimelineWorkspace: View {
                 }
             }
         }
-        .sheet(isPresented: $isScriptSheetOpen) { SubtitleScriptComposer(viewModel: viewModel) }
-        .sheet(isPresented: $isOCRSheetOpen) {
+    }
+
+    var body: some View {
+        observedWorkspace.sheet(isPresented: $isScriptSheetOpen) { SubtitleScriptComposer(viewModel: viewModel) }
+        .onChange(of: viewModel.subtitleEvidenceCompletion) { _, _ in
+            if !isOCRSheetOpen && !isScriptSheetOpen { viewModel.comparison.presentOfferIfEligible() }
+        }
+        .sheet(isPresented: $viewModel.subtitleComparisonPresented) {
+            SubtitleComparisonView(viewModel: viewModel, controller: viewModel.comparison)
+        }
+        .sheet(isPresented: $isOCRSheetOpen, onDismiss: { viewModel.comparison.presentOfferIfEligible() }) {
             if let media = viewModel.mediaURL {
                 SubtitleOCRConfigurationView(media: media, controller: viewModel.ocrCreate, canRun: !runner.isRunning)
             }
@@ -658,6 +670,14 @@ struct SubtitleTimelineWorkspace: View {
                     .accessibilityIdentifier("subtitle.ocr.toolbar")
                 timelineToolButton("doc.text", title: "Tạo sub từ văn bản", active: false, help: "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản.") { beginScriptSubtitle() }
                     .disabled(viewModel.mediaURL == nil || runner.isRunning || viewModel.isApplyingTranscriptLayout)
+                Menu {
+                    Button("Đối chiếu bằng OCR") { viewModel.comparison.open(source: .ocr) }
+                        .disabled(!viewModel.comparison.hasVideo)
+                    Button("Đối chiếu bằng âm thanh") { viewModel.comparison.open(source: .audio) }
+                } label: { Label("Đối chiếu", systemImage: "text.badge.checkmark") }
+                    .menuStyle(.borderlessButton).fixedSize()
+                    .disabled(!viewModel.comparison.canStart)
+                    .help("Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng.")
                 SubtitleTranslateMenuButton(viewModel: viewModel)
                     .help("Dịch phụ đề")
                 if AppFeatureFlags.dubbingEnabled {

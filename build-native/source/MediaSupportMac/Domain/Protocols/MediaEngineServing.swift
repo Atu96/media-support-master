@@ -11,6 +11,7 @@ protocol MediaEngineServing: AnyObject {
     func runCheckEngines() async
     func runWhisperSRT(for mediaURL: URL, sourceLang: String) async
     func runOfflineWhisperSRT(for mediaURL: URL, sourceLang: String) async
+    func runComparisonSpeechSRT(for mediaURL: URL, output: URL, sourceLang: String, offline: Bool) async
     func runScriptAlignSRT(
         for mediaURL: URL,
         scriptFile: URL,

@@ -57,6 +57,8 @@ SOURCES=(
     "$SRC/Domain/SubtitleTiming/SpeechWordTimingProcessor.swift"
     "$SRC/Domain/SubtitleTiming/SemanticCuePlanner.swift"
     "$SRC/Domain/SubtitleTiming/OCRSubtitleAccumulator.swift"
+    "$SRC/Domain/SubtitleTiming/NativeScriptAligner.swift"
+    "$SRC/Domain/SubtitleTiming/SubtitleEvidenceComparison.swift"
     "$SRC/Infrastructure/Translation/SubtitleTranscriptPostProcessor.swift"
     "$SRC/Infrastructure/Translation/SubtitleLayoutReflowController.swift"
     "$SRC/Infrastructure/Preview/WaveformPeakService.swift"

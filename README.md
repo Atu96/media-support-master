@@ -78,6 +78,8 @@ The current source adds bounded cloud dubbing, reusable speech clips, original E
 
 The Timeline now distinguishes audio transcription, burned-in video OCR and creating subtitles from an existing script. It also provides explicit QC cue repair with Undo, global subtitle position controls and one SRT/TXT/XML export menu. See the [current Timeline workflow guide](docs/development/timeline-workflows.md) for the updated button names, usage and limits.
 
+Optional OCR/audio comparison keeps the current transcript while you review and choose a second source. An original script can reuse existing cue times without new transcription when it matches sufficiently. See [comparison and original text priority](docs/development/subtitle-comparison.md).
+
 ## License
 
 An open-source license has not been selected for this project's own code. Public access to the repository does not grant a new open-source license. Third-party components retain their own licenses; see [notices](THIRD_PARTY_NOTICES.md).

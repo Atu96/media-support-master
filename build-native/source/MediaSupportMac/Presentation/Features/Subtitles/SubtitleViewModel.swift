@@ -1,6 +1,6 @@
 import Foundation
 
-enum TranscriptVariant: String, CaseIterable, Identifiable {
+enum TranscriptVariant: String, CaseIterable, Identifiable, Sendable {
     case original
     case translated
 
@@ -21,6 +21,7 @@ final class SubtitleViewModel: ObservableObject {
             if oldValue != mediaURL {
                 layoutReflow.cancel()
                 ocrCreate.cancelIfMediaChanged(to: mediaURL)
+                comparison.invalidate()
             }
         }
     }
@@ -38,6 +39,7 @@ final class SubtitleViewModel: ObservableObject {
             if oldValue != segments {
                 layoutReflow.cancel()
                 ocrCreate.cancelIfSessionEdited()
+                comparison.invalidate()
             }
         }
     }
@@ -48,6 +50,7 @@ final class SubtitleViewModel: ObservableObject {
             if oldValue != activeTranscriptVariant {
                 layoutReflow.cancel()
                 ocrCreate.cancelIfSessionEdited()
+                comparison.invalidate()
             }
         }
     }
@@ -56,13 +59,20 @@ final class SubtitleViewModel: ObservableObject {
     @Published var transcriptSummary = ""
     @Published var isSummarizing = false
     @Published var exportMessage = ""
-    @Published var burnStyle = SubtitleBurnStyle.load()
-    @Published var wrapStyle = SubtitleWrapStyle.load()
-    @Published var isApplyingTranscriptLayout = false
+    @Published var burnStyle = SubtitleBurnStyle.load() { didSet { if oldValue != burnStyle { comparison.invalidate() } } }
+    @Published var wrapStyle = SubtitleWrapStyle.load() { didSet { if oldValue != wrapStyle { comparison.invalidate() } } }
+    @Published private var isReflowingTranscript = false
+    @Published var isComparingSubtitles = false
+    var isApplyingTranscriptLayout: Bool {
+        get { isReflowingTranscript || isComparingSubtitles }
+        set { isReflowingTranscript = newValue }
+    }
     /// Dòng sub đang chọn (tua preview) — overlay hiện đúng text dòng này khi pause.
     @Published var previewFocusSegmentID: Int?
     /// Text đang gõ (Enter xuống dòng) — preview cập nhật realtime trước khi commit.
-    @Published var liveEditDraft: (id: Int, text: String)?
+    @Published var liveEditDraft: (id: Int, text: String)? {
+        didSet { if oldValue?.id != liveEditDraft?.id || oldValue?.text != liveEditDraft?.text { comparison.invalidate() } }
+    }
     @Published var burnMessage = ""
     @Published var scriptText = ""
     @Published var scriptAlignmentLanguage = ScriptAlignmentLanguage.load() {
@@ -89,6 +99,8 @@ final class SubtitleViewModel: ObservableObject {
     @Published var canRedoEdit = false
     @Published var exportDeliverySignal: ExportDeliverySignal?
     @Published var cloudAlert: CloudAIErrorAlert?
+    @Published var subtitleComparisonPresented = false
+    @Published var subtitleEvidenceCompletion: UUID?
 
     let engine: MediaEngineServing
     let preview = AVPreviewService.shared
@@ -124,6 +136,7 @@ final class SubtitleViewModel: ObservableObject {
     lazy var whisperCreate = SubtitleWhisperCreateController(session: self)
     lazy var scriptCreate = SubtitleScriptCreateController(session: self)
     lazy var ocrCreate = SubtitleOCRCreateController(session: self)
+    lazy var comparison = SubtitleComparisonController(session: self)
 
     init(coordinator: AppCoordinator) {
         self.engine = MediaEngineService.shared
@@ -186,10 +199,22 @@ final class SubtitleViewModel: ObservableObject {
     }
 
     func runScriptAlign() {
+        if whisperComplete, !segments.isEmpty, activeTranscriptVariant == .original,
+           mediaURL == scriptDraftMediaURL {
+            comparison.applyOriginalScript()
+            return
+        }
         scriptCreate.run()
     }
+
+    func didCompleteSubtitleSource(_ source: SubtitleEvidenceSource) {
+        comparison.noteCompletion(source)
+    }
+
+    func cancelComparisonOCR() { ocrCreate.cancel() }
 }
 
 // MARK: - Create session (facade for Create/ controllers)
 
 extension SubtitleViewModel: SubtitleCreateSession {}
+extension SubtitleViewModel: SubtitleComparisonSession {}
