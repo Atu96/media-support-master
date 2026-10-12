@@ -741,3 +741,7 @@
 "Đã tạo giọng cho %d đoạn liền mạch." = "連続した%d段落の音声を生成しました。";
 "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "段落にできません。空キュー、重複ID、時間の重複または不正があります。先にQCを修正してください。";
 "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "一度に段落化するには字幕が大きすぎます。短い部分に分けてください。";
+"Lồng tiếng phần này" = "選択部分を吹き替え";
+"Lồng tiếng toàn bộ" = "すべて吹き替え";
+"Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "選択した字幕を含む段落全体を、隣接部分も含めて吹き替えます。";
+"Lồng tiếng cho các phần phụ đề đã chọn." = "選択した字幕部分を吹き替えます。";

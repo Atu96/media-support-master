@@ -681,19 +681,21 @@ struct SubtitleTimelineWorkspace: View {
                 SubtitleTranslateMenuButton(viewModel: viewModel)
                     .help("Dịch phụ đề")
                 if AppFeatureFlags.dubbingEnabled {
-                    timelineToolButton(
-                        "waveform.badge.plus",
-                        title: "Lồng cue chọn",
-                        active: canRenderSelectedDubbing,
-                        help: dubbingSession.usesMaziaoParagraphs ? "Tạo trọn đoạn chứa các cue đã chọn, gồm các cue liền kề trong đoạn." : "Tạo giọng cho các cue phụ đề đang chọn"
-                    ) {
-                        rightPanelMode = .dubbing
-                        dubbingSession.renderSelected(cues: viewModel.segments, selectedIDs: selectedIDs)
+                    if timelineSelectionFocus == .subtitle && !selectedIDs.isEmpty {
+                        timelineToolButton(
+                            "waveform.badge.plus",
+                            title: "Lồng tiếng phần này",
+                            active: canRenderSelectedDubbing,
+                            help: dubbingSession.usesMaziaoParagraphs ? "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." : "Lồng tiếng cho các phần phụ đề đã chọn."
+                        ) {
+                            rightPanelMode = .dubbing
+                            dubbingSession.renderSelected(cues: viewModel.segments, selectedIDs: selectedIDs)
+                        }
+                        .disabled(!canRenderSelectedDubbing)
                     }
-                    .disabled(!canRenderSelectedDubbing)
                     timelineToolButton(
                         "waveform.path",
-                        title: dubbingSession.isRendering ? "Dừng" : "Lồng toàn bộ",
+                        title: dubbingSession.isRendering ? "Dừng" : "Lồng tiếng toàn bộ",
                         active: dubbingSession.isRendering,
                         help: dubbingSession.isRendering ? "Dừng tạo giọng" : "Tạo giọng cho toàn bộ phụ đề"
                     ) {

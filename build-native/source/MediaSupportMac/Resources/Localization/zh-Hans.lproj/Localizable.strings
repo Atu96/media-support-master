@@ -741,3 +741,7 @@
 "Đã tạo giọng cho %d đoạn liền mạch." = "已为%d个连贯段落生成语音。";
 "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "无法合并段落：存在空字幕段、重复ID或重叠/无效时间。请先修复QC。";
 "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "字幕过大，无法一次合并。请将内容分为较短部分。";
+"Lồng tiếng phần này" = "为选中部分配音";
+"Lồng tiếng toàn bộ" = "全部配音";
+"Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "为包含选中字幕的完整段落配音，包括相邻部分。";
+"Lồng tiếng cho các phần phụ đề đã chọn." = "为选中的字幕部分配音。";

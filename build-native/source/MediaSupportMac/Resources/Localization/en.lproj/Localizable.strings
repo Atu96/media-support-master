@@ -759,3 +759,7 @@
 "Đã tạo giọng cho %d đoạn liền mạch." = "Generated voice for %d connected paragraphs.";
 "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "Cannot group paragraphs: cues are empty, IDs are duplicated, or times overlap/are invalid. Fix QC first.";
 "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "Subtitles are too large to group in one run. Split the content into shorter parts.";
+"Lồng tiếng phần này" = "Dub this part";
+"Lồng tiếng toàn bộ" = "Dub all";
+"Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "Dub the full paragraph containing the selected subtitles, including adjacent parts.";
+"Lồng tiếng cho các phần phụ đề đã chọn." = "Dub the selected subtitle parts.";

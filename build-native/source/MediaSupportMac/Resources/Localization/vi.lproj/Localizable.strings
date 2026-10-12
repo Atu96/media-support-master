@@ -759,3 +759,7 @@
 "Đã tạo giọng cho %d đoạn liền mạch." = "Đã tạo giọng cho %d đoạn liền mạch.";
 "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước.";
 "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn.";
+"Lồng tiếng phần này" = "Lồng tiếng phần này";
+"Lồng tiếng toàn bộ" = "Lồng tiếng toàn bộ";
+"Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề.";
+"Lồng tiếng cho các phần phụ đề đã chọn." = "Lồng tiếng cho các phần phụ đề đã chọn.";

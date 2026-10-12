@@ -741,3 +741,7 @@
 "Đã tạo giọng cho %d đoạn liền mạch." = "연속 문단 %d개의 음성을 생성했습니다.";
 "Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "빈 큐, 중복 ID 또는 겹치거나 잘못된 시간 때문에 문단을 묶을 수 없습니다. 먼저 QC를 수정하세요.";
 "Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "한 번에 묶기에는 자막이 너무 큽니다. 내용을 짧은 부분으로 나누세요.";
+"Lồng tiếng phần này" = "선택 부분 더빙";
+"Lồng tiếng toàn bộ" = "전체 더빙";
+"Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "선택한 자막을 포함한 문단 전체를 인접 부분과 함께 더빙합니다.";
+"Lồng tiếng cho các phần phụ đề đã chọn." = "선택한 자막 부분을 더빙합니다.";
