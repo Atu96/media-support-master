@@ -261,6 +261,7 @@
 "Màu hiệu ứng" = "Effect color";
 "Lên trên" = "Upward";
 "Vị trí phụ đề" = "Subtitle position";
+"Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "Enter or paste a script and align it with speech in video/audio to create subtitles. Keep the original text.";
 "Lấy sub từ âm thanh" = "Extract subtitles from audio";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "Transcribe speech in video or audio into subtitles.";
 "Đọc chữ đã dính trong hình video bằng OCR cục bộ." = "Read burned-in video text using local OCR.";

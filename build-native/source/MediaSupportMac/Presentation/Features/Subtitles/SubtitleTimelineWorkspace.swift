@@ -656,7 +656,7 @@ struct SubtitleTimelineWorkspace: View {
                 timelineToolButton("text.viewfinder", title: "Lấy sub từ video", active: isOCRSheetOpen, help: "Đọc chữ đã dính trong hình video bằng OCR cục bộ.", action: beginOCR)
                     .disabled(!canOpenOCR)
                     .accessibilityIdentifier("subtitle.ocr.toolbar")
-                timelineToolButton("doc.text", title: "Văn bản gốc", active: false, help: "Giữ nguyên chữ và khớp thời gian theo media") { beginScriptSubtitle() }
+                timelineToolButton("doc.text", title: "Tạo sub từ văn bản", active: false, help: "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản.") { beginScriptSubtitle() }
                     .disabled(viewModel.mediaURL == nil || runner.isRunning || viewModel.isApplyingTranscriptLayout)
                 SubtitleTranslateMenuButton(viewModel: viewModel)
                     .help("Dịch phụ đề")

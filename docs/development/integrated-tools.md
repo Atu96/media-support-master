@@ -23,6 +23,6 @@ Tool updates do not update the app itself. App distribution remains a separate s
 
 ## Validation
 
-`test.command` includes core/Japanese layout regressions, native script fixtures in five languages, a long script with an ASR substitution, mismatch rejection, token JSON/language parsing, signed manifests, damaged assets, rollback, template preservation, native stereo-to-mono extraction, helper cancellation and 21 native/legacy XML comparisons. It does not call providers or access Keychain.
+`test.command` includes core/Japanese layout regressions, native script fixtures in five languages, a long script with an ASR substitution, mismatch rejection, token JSON/language parsing, signed manifests, damaged assets, rollback, template preservation, native stereo-to-mono extraction, helper cancellation and 24 native/legacy XML comparisons, including the new vertical-position cases. It does not call providers or access Keychain.
 
 Optional `MSM_NATIVE_TRANSCRIPT_FIXTURES` points to locally generated synthetic Whisper JSON/TXT fixtures named vi/ko/zh. The TEST app also has an explicit `MSM_INTEGRATED_TOOLS_SMOKE_DIR` diagnostic: a directory containing synthetic `speech.wav` and `script.txt` runs native alignment/detection/XML, without loading the UI or calling online providers. The diagnostic is disabled for release-channel apps.

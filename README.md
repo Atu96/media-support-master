@@ -76,6 +76,8 @@ See [build and test notes](docs/development/build-and-test.md) and [architecture
 
 The current source adds bounded cloud dubbing, reusable speech clips, original ElevenLabs MP3 caching, Maziao task recovery and local OCR of burned-in subtitles. OCR lets you select the subtitle area, automatically detects the five primary languages, and creates timed cues for the existing translation/dubbing workflow. These changes require a new source/TEST build and are not included in the existing 1.0.1 download. See [dubbing notes](docs/development/dubbing.md) and [OCR notes](docs/development/subtitle-ocr.md) for behavior and verification limits.
 
+The Timeline now distinguishes audio transcription, burned-in video OCR and creating subtitles from an existing script. It also provides explicit QC cue repair with Undo, global subtitle position controls and one SRT/TXT/XML export menu. See the [current Timeline workflow guide](docs/development/timeline-workflows.md) for the updated button names, usage and limits.
+
 ## License
 
 An open-source license has not been selected for this project's own code. Public access to the repository does not grant a new open-source license. Third-party components retain their own licenses; see [notices](THIRD_PARTY_NOTICES.md).

@@ -245,6 +245,7 @@
 "Màu hiệu ứng" = "エフェクトカラー";
 "Lên trên" = "上へ";
 "Vị trí phụ đề" = "字幕の位置";
+"Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "台本を入力または貼り付け、動画や音声の発話に合わせて字幕を作成します。元の文章は保持されます。";
 "Lấy sub từ âm thanh" = "音声から字幕を作成";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "動画や音声の発話から字幕を作成します。";
 "Đọc chữ đã dính trong hình video bằng OCR cục bộ." = "ローカルOCRで動画に焼き込まれた文字を読み取ります。";

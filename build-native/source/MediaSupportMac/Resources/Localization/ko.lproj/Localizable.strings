@@ -245,6 +245,7 @@
 "Màu hiệu ứng" = "효과 색상";
 "Lên trên" = "위로";
 "Vị trí phụ đề" = "자막 위치";
+"Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "대본을 입력하거나 붙여 넣고 영상 또는 오디오의 말에 맞춰 자막을 생성합니다. 원문은 유지됩니다.";
 "Lấy sub từ âm thanh" = "음성에서 자막 생성";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "영상 또는 오디오의 말을 인식해 자막을 생성합니다.";
 "Đọc chữ đã dính trong hình video bằng OCR cục bộ." = "로컬 OCR로 영상에 삽입된 글자를 읽습니다.";

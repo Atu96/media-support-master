@@ -245,6 +245,7 @@
 "Màu hiệu ứng" = "效果颜色";
 "Lên trên" = "向上";
 "Vị trí phụ đề" = "字幕位置";
+"Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "输入或粘贴脚本，与视频或音频中的语音对齐以生成字幕，保留原文内容。";
 "Lấy sub từ âm thanh" = "从音频生成字幕";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "识别视频或音频中的语音并生成字幕。";
 "Đọc chữ đã dính trong hình video bằng OCR cục bộ." = "使用本地OCR读取视频画面中已嵌入的文字。";
