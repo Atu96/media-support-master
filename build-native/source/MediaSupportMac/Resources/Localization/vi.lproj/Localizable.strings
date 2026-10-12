@@ -261,6 +261,16 @@
 "Màu hiệu ứng" = "Màu hiệu ứng";
 "Lên trên" = "Lên trên";
 "Vị trí phụ đề" = "Vị trí phụ đề";
+"Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất." = "Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất.";
+"Khớp độ dài sub" = "Khớp độ dài sub";
+"Đã khớp độ dài sub cho %d cue." = "Đã khớp độ dài sub cho %d cue.";
+"Tốc độ tự nhiên 1×" = "Tốc độ tự nhiên 1×";
+"DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại." = "DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại.";
+"Tác vụ Maziao cùng lúc" = "Tác vụ Maziao cùng lúc";
+"1 nhóm" = "1 nhóm";
+"2 nhóm" = "2 nhóm";
+"Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm." = "Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm.";
+"Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời." = "Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời.";
 "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản.";
 "Lấy sub từ âm thanh" = "Lấy sub từ âm thanh";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "Nghe lời nói trong video hoặc audio để tạo phụ đề.";

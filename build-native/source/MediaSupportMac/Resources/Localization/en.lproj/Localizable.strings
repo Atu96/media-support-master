@@ -261,6 +261,16 @@
 "Màu hiệu ứng" = "Effect color";
 "Lên trên" = "Upward";
 "Vị trí phụ đề" = "Subtitle position";
+"Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất." = "The cue is too short to retain all speech within supported playback rates. Extend it before export.";
+"Khớp độ dài sub" = "Fit subtitle duration";
+"Đã khớp độ dài sub cho %d cue." = "Fitted %d cues to subtitle duration.";
+"Tốc độ tự nhiên 1×" = "Natural speed 1×";
+"DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại." = "DUB fits SUB by default. Drag its end to adjust; double-click for 1×; right-click to fit again.";
+"Tác vụ Maziao cùng lúc" = "Concurrent Maziao batches";
+"1 nhóm" = "1 batch";
+"2 nhóm" = "2 batches";
+"Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm." = "Up to 2 Maziao batches; local downloads/conversions remain limited to 2. Select 1 batch if your account reports a concurrency limit.";
+"Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời." = "Dubbing exceeds the media duration. Adjust the cue before export to retain all speech.";
 "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "Enter or paste a script and align it with speech in video/audio to create subtitles. Keep the original text.";
 "Lấy sub từ âm thanh" = "Extract subtitles from audio";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "Transcribe speech in video or audio into subtitles.";

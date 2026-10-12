@@ -127,6 +127,7 @@ enum MediaSupportCoreTests {
         run("ElevenLabs gửi đúng tốc độ, giữ chữ và mô hình", testElevenLabsGenerationSpeed)
         await runAsync("Maziao phục hồi receipt sau lỗi/hủy/restart không submit lại", testMaziaoTaskRecovery)
         await runAsync("Hàng đợi DUB giới hạn hai việc và dọn khi hủy/lỗi", testDubbingRenderQueue)
+        await runAsync("Hai nhóm Maziao giữ ngân sách IO chung và khóa receipt trùng", testDubbingWorkBudgets)
         await runAsync("MP3 gốc mở/phát/ghép được và không giải nén cache", testDubbingCompressedCache)
         await runAsync("Cache duration giữ hard-link và bỏ metadata khi tệp đổi", testDubbingDurationCache)
         await runAsync("Gộp cue giữ DUB phía sau và ghép audio cục bộ", testDubbingCueMergePreservation)
@@ -2081,9 +2082,21 @@ enum MediaSupportCoreTests {
             fingerprint: first,
             playbackRateOverride: 0.5
         )
-        try expect(naturalShort.playbackRate == 1, "voice ngắn phải mặc định đọc tự nhiên 1×")
-        try expect(naturalShort.playedDuration == 1 && naturalShort.fit == .fits, "voice ngắn được kết thúc tự nhiên rồi để im lặng")
-        try expect(naturalLong.playbackRate == 1 && naturalLong.fit == .needsReview, "voice dài không được tự tăng tốc")
+        try expect(abs(naturalShort.playedDuration - naturalShort.cueDuration) < 0.001, "voice ngắn mặc định phải khớp chiều dài SUB")
+        try expect(naturalShort.fit == .adjusted, "voice đã khớp sub phải báo điều chỉnh")
+        try expect(abs(naturalLong.playbackRate - 1.4) < 0.001 && naturalLong.fit == .adjusted, "voice dài phải tự khớp đủ lời")
+        let retimedAuto = naturalLong.updatingTiming(from: retimedCue)
+        try expect(abs(retimedAuto.playedDuration - retimedCue.durationSeconds) < 0.001, "đổi SUB phải cập nhật rate tự động")
+        try expect(naturalLong.applyingPlaybackRate(1).playbackRate == 1, "1× thủ công phải thắng tự động")
+        let fast = DubbingRenderedCue(id: 9, startSeconds: 0, endSeconds: 1, audioDuration: 8,
+            audioURL: naturalLong.audioURL, fingerprint: first)
+        try expect(fast.playedDuration == 1 && fast.fit == .needsReview, "rate cao phải giữ lời/khớp span và báo xem lại")
+        let slow = DubbingRenderedCue(id: 10, startSeconds: 0, endSeconds: 8, audioDuration: 1,
+            audioURL: naturalLong.audioURL, fingerprint: first)
+        try expect(slow.playedDuration == 8 && slow.fit == .needsReview, "rate rất chậm phải được báo xem lại")
+        let invalid = DubbingRenderedCue(id: 11, startSeconds: 1, endSeconds: 1, audioDuration: 1,
+            audioURL: naturalLong.audioURL, fingerprint: first)
+        try expect(invalid.playbackRate.isFinite && invalid.fit == .needsReview, "span rỗng không được chia cho0")
         try expect(abs(manualFast.playedDuration - 2) < 0.001 && manualFast.fit == .adjusted, "tăng tốc thủ công phải khớp cue")
         try expect(abs(manualSlow.playedDuration - 2) < 0.001 && manualSlow.fit == .adjusted, "giảm tốc thủ công phải được giữ khi còn nằm trong cue")
         let retimedManual = manualFast.updatingTiming(from: retimedCue)
@@ -2112,6 +2125,45 @@ enum MediaSupportCoreTests {
             !DubbingPlaybackMath.shouldCorrectDrift(actualAudioTime: 0.95, expectedAudioTime: 1, secondsSinceLastSeek: 1),
             "drift nhỏ không được seek gây giật"
         )
+    }
+
+    @MainActor private static func testDubbingWorkBudgets() async throws {
+        let remote = DubbingWorkLimiter()
+        let io = DubbingWorkLimiter()
+        var activeIO = 0
+        var peakIO = 0
+        var activeRemote = 0
+        var peakRemote = 0
+        try await DubbingRenderQueue.run(count: 4, operation: { batch in
+            let lease = try await remote.acquire(keys: ["batch-\(batch)"])
+            defer { remote.release(lease) }
+            activeRemote += 1; peakRemote = max(peakRemote, activeRemote)
+            defer { activeRemote -= 1 }
+            try await DubbingRenderQueue.run(count: 4, operation: { _ in
+                let transfer = try await io.acquire()
+                defer { io.release(transfer) }
+                activeIO += 1; peakIO = max(peakIO, activeIO)
+                defer { activeIO -= 1 }
+                try await Task.sleep(for: .milliseconds(10))
+            })
+        })
+        try expect(peakRemote == 2 && peakIO == 2 && activeIO == 0 && activeRemote == 0,
+            "nested batch vượt2 remote/2IO hoặc rò lease")
+        let lock = try await remote.acquire(keys: ["receipt-part-a", "receipt-part-b"])
+        var entered = false
+        let waiter = Task { @MainActor in
+            let next = try await remote.acquire(keys: ["receipt-part-b"])
+            defer { remote.release(next) }
+            entered = true
+        }
+        try await Task.sleep(for: .milliseconds(45))
+        try expect(!entered, "hai nhóm cùng receipt chạy chồng và có thể xóa receipt của nhau")
+        waiter.cancel()
+        do { try await waiter.value; throw TestFailure(description: "lease waiter bỏ qua hủy") }
+        catch is CancellationError { }
+        remote.release(lock)
+        let next = try await remote.acquire(keys: ["receipt-part-b"])
+        remote.release(next)
     }
 
     private static func testDubbingToolbarAvailability() throws {

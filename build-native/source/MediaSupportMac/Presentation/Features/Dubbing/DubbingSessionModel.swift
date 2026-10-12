@@ -58,6 +58,9 @@ final class DubbingSessionModel: ObservableObject {
     @Published var maziaoVoiceIdentifier: String {
         didSet { defaults.set(maziaoVoiceIdentifier, forKey: Keys.maziaoVoice) }
     }
+    @Published var maziaoConcurrentBatches: Int {
+        didSet { defaults.set(min(2, max(1, maziaoConcurrentBatches)), forKey: Keys.maziaoConcurrentBatches) }
+    }
 
     @Published var languageIdentifier: String {
         didSet {
@@ -96,9 +99,11 @@ final class DubbingSessionModel: ObservableObject {
         static let dubVolume = "msm.dubbing.dubVolume"
         static let duckOriginal = "msm.dubbing.duckOriginal"
         static let playbackRates = "msm.dubbing.playbackRates"
+        static let maziaoConcurrentBatches = "msm.dubbing.maziaoConcurrentBatches"
     }
 
     private let defaults: UserDefaults
+    private let permitsUsageRefresh: Bool
     private let cache: DubbingCacheStore
     private let appleSpeech: DubbingSpeechSynthesizing
     private let googleSpeech: DubbingSpeechSynthesizing
@@ -146,6 +151,7 @@ final class DubbingSessionModel: ObservableObject {
         readCredentials: Bool = true
     ) {
         self.defaults = defaults
+        permitsUsageRefresh = readCredentials
         self.cache = cache
         appleSpeech = speech ?? AppleSpeechDubbingService()
         self.googleSpeech = googleSpeech ?? GoogleCloudDubbingService()
@@ -159,6 +165,8 @@ final class DubbingSessionModel: ObservableObject {
         elevenVoiceIdentifier = defaults.string(forKey: Keys.elevenVoice) ?? ""
         maziaoModel = MaziaoDubbingModel(rawValue: defaults.string(forKey: Keys.maziaoModel) ?? "") ?? .lingualV2
         maziaoVoiceIdentifier = defaults.string(forKey: Keys.maziaoVoice) ?? ""
+        maziaoConcurrentBatches = defaults.object(forKey: Keys.maziaoConcurrentBatches) == nil
+            ? 2 : min(2, max(1, defaults.integer(forKey: Keys.maziaoConcurrentBatches)))
 
         let savedLanguage = defaults.string(forKey: Keys.language) ?? "vi-VN"
         languageIdentifier = savedLanguage
@@ -514,9 +522,19 @@ final class DubbingSessionModel: ObservableObject {
     func resetPlaybackRate(cueIDs: Set<Int>) {
         let selected = cueIDs.compactMap { renderedByCueID[$0] }
         guard !selected.isEmpty else { return }
-        for cue in selected { playbackRateByFingerprint.removeValue(forKey: cue.fingerprint) }
+        for cue in selected { playbackRateByFingerprint[cue.fingerprint] = 1 }
         persistPlaybackRates()
         statusMessage = L10n.format("Đã đưa %d cue về tốc độ tự nhiên.", selected.count)
+        let preview = AVPreviewService.shared
+        synchronizePreviewPlayback(at: preview.currentTime, isPlaying: preview.isPlaying)
+    }
+
+    func fitPlaybackRateToSub(cueIDs: Set<Int>) {
+        let selected = cueIDs.compactMap { renderedByCueID[$0] }
+        guard !selected.isEmpty else { return }
+        for cue in selected { playbackRateByFingerprint.removeValue(forKey: cue.fingerprint) }
+        persistPlaybackRates()
+        statusMessage = L10n.format("Đã khớp độ dài sub cho %d cue.", selected.count)
         let preview = AVPreviewService.shared
         synchronizePreviewPlayback(at: preview.currentTime, isPlaying: preview.isPlaying)
     }
@@ -694,6 +712,7 @@ final class DubbingSessionModel: ObservableObject {
         let voice = selectedVoiceIdentifier
         let rate = speechRate
         let providerService = selectedSpeechService
+        let maziaoParallelism = min(2, max(1, maziaoConcurrentBatches))
         renderTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -706,6 +725,7 @@ final class DubbingSessionModel: ObservableObject {
                 let batchService = providerService as? DubbingSpeechBatchSynthesizing
                 var batchByCueID: [Int: [DubbingSpeechRequest]] = [:]
                 var batchPositionByCueID: [Int: (current: Int, total: Int)] = [:]
+                var maziaoBatches: [[DubbingSpeechRequest]] = []
                 if let batchService {
                     self.statusMessage = L10n.format("Đang chuẩn bị %d câu chưa có giọng…", cues.count)
                     let pending = cues.compactMap { cue -> DubbingSpeechRequest? in
@@ -718,12 +738,36 @@ final class DubbingSessionModel: ObservableObject {
                             outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: model)
                     }
                     let batches = try await batchService.renderBatches(for: pending)
+                    if provider == .maziao { maziaoBatches = batches }
                     for (batchOffset, batch) in batches.enumerated() {
                         for request in batch { batchByCueID[request.cueID] = batch }
                         for request in batch {
                             batchPositionByCueID[request.cueID] = (batchOffset + 1, batches.count)
                         }
                     }
+                }
+                if provider == .maziao, let batchService {
+                    let pendingIDs = Set(maziaoBatches.flatMap { $0.map(\.cueID) })
+                    for cue in cues where !pendingIDs.contains(cue.id) {
+                        try await self.acceptRenderedCue(cue, language: language, voice: voice, rate: rate,
+                            provider: provider, model: model, generation: generation)
+                        self.progressCurrent += 1
+                    }
+                    let cuesByID = Dictionary(uniqueKeysWithValues: cues.map { ($0.id, $0) })
+                    let plannedBatches = maziaoBatches
+                    try await DubbingRenderQueue.run(count: plannedBatches.count, limit: maziaoParallelism, operation: { [self] index in
+                        let batch = plannedBatches[index]
+                        try await batchService.renderBatch(batch) { [weak self] progress in
+                            await self?.updateRenderProgress(progress, batchCurrent: index + 1,
+                                batchTotal: plannedBatches.count, generation: generation)
+                        }
+                        for request in batch {
+                            guard let cue = cuesByID[request.cueID] else { throw DubbingError.invalidAudioBuffer }
+                            try await self.acceptRenderedCue(cue, language: language, voice: voice, rate: rate,
+                                provider: provider, model: model, generation: generation)
+                            self.progressCurrent += 1
+                        }
+                    })
                 }
                 if provider == .googleCloud || provider == .elevenLabs {
                     let pending = cues.filter { self.cachedClip(cue: $0, language: language, voice: voice,
@@ -782,6 +826,8 @@ final class DubbingSessionModel: ObservableObject {
                 }
                 var processedCount = 0
                 for cue in cues {
+                    // Maziao clips were committed as each complete batch arrived; do not replay deleted/finished cues.
+                    if provider == .maziao, batchService != nil { break }
                     try Task.checkCancellation()
                     guard self.renderGeneration == generation else { throw CancellationError() }
                     let fingerprint = DubbingFingerprint.make(
@@ -852,14 +898,16 @@ final class DubbingSessionModel: ObservableObject {
                     processedCount += 1
                     self.progressCurrent = max(self.progressCurrent, processedCount)
                 }
+                try Task.checkCancellation()
+                guard self.renderGeneration == generation else { throw CancellationError() }
                 self.renderTask = nil
                 self.renderingCueIDs.removeAll()
                 self.statusMessage = L10n.format("Đã tạo giọng cho %d cue.", cues.count)
                 self.refreshCacheUsage()
                 self.synchronize(cues: allCues)
-                if provider == .elevenLabs {
+                if self.permitsUsageRefresh && provider == .elevenLabs {
                     _ = try? await ElevenLabsQuotaService.refresh()
-                } else if provider == .maziao {
+                } else if self.permitsUsageRefresh && provider == .maziao {
                     _ = try? await MaziaoAPIClient.account()
                 }
             } catch is CancellationError {
@@ -879,6 +927,32 @@ final class DubbingSessionModel: ObservableObject {
                 self.statusMessage = ""
             }
         }
+    }
+
+    private func acceptRenderedCue(
+        _ cue: SRTSegment, language: String, voice: String?, rate: Float,
+        provider: DubbingSpeechProvider, model: String, generation: UUID
+    ) async throws {
+        try Task.checkCancellation()
+        guard renderGeneration == generation else { throw CancellationError() }
+        let fingerprint = DubbingFingerprint.make(cue: cue, localeIdentifier: language,
+            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
+        guard let url = cache.existingClipURL(for: fingerprint) else { throw DubbingError.invalidAudioBuffer }
+        let duration = await DubbingCacheStore.audioDuration(at: url)
+        guard DubbingAudioValidation.isPlausible(duration: duration, text: cue.text) else {
+            cache.removeClip(for: fingerprint)
+            throw DubbingError.invalidAudioBuffer
+        }
+        try Task.checkCancellation()
+        guard renderGeneration == generation,
+              activeFingerprintByCueID[cue.id] == nil || activeFingerprintByCueID[cue.id] == fingerprint else {
+            throw CancellationError()
+        }
+        try cache.registerSpeechReuse(content: DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
+            voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model), fingerprint: fingerprint)
+        renderedByCueID[cue.id] = DubbingRenderedCue(id: cue.id, startSeconds: cue.startSeconds,
+            endSeconds: cue.endSeconds, audioDuration: duration, audioURL: url, fingerprint: fingerprint)
+        renderingCueIDs.remove(cue.id)
     }
 
     private func updateRenderProgress(

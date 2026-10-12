@@ -245,6 +245,16 @@
 "Màu hiệu ứng" = "エフェクトカラー";
 "Lên trên" = "上へ";
 "Vị trí phụ đề" = "字幕の位置";
+"Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất." = "対応する再生速度では、すべての発話を保持するには区間が短すぎます。書き出す前に区間を長くしてください。";
+"Khớp độ dài sub" = "字幕の長さに合わせる";
+"Đã khớp độ dài sub cho %d cue." = "%d個の字幕区間の長さに合わせました。";
+"Tốc độ tự nhiên 1×" = "自然な速度1×";
+"DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại." = "吹き替えは標準で字幕の長さに合います。末尾をドラッグして調整、ダブルクリックで1×、右クリックで再調整できます。";
+"Tác vụ Maziao cùng lúc" = "Maziaoの同時処理";
+"1 nhóm" = "1グループ";
+"2 nhóm" = "2グループ";
+"Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm." = "Maziaoは最大2グループ、ローカルのダウンロード・変換も最大2処理です。同時実行制限が出る場合は1グループを選んでください。";
+"Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời." = "吹き替えがメディアの長さを超えています。すべての発話を保持するため、書き出す前に区間を調整してください。";
 "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "台本を入力または貼り付け、動画や音声の発話に合わせて字幕を作成します。元の文章は保持されます。";
 "Lấy sub từ âm thanh" = "音声から字幕を作成";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "動画や音声の発話から字幕を作成します。";

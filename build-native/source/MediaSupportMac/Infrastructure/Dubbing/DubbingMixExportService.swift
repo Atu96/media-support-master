@@ -38,6 +38,10 @@ enum DubbingMixExportService {
         var trackAvailableAt: [Double] = []
         var insertedCues: [DubbingRenderedCue] = []
         for cue in renderedCues.sorted(by: { $0.startSeconds < $1.startSeconds }) {
+            guard cue.startSeconds.isFinite, cue.startSeconds >= 0,
+                  cue.startSeconds + cue.playedDuration <= sourceDuration.seconds + 0.04 else {
+                throw DubbingError.audioOutsideMedia
+            }
             let clipAsset = AVURLAsset(url: cue.audioURL)
             guard let clipTrack = try await clipAsset.loadTracks(withMediaType: .audio).first else {
                 throw DubbingError.missingAudioTrack(cue.audioURL)
@@ -47,7 +51,14 @@ enum DubbingMixExportService {
             let remainingMediaDuration = max(0, sourceDuration.seconds - cue.startSeconds)
             let playedDuration = min(cue.playedDuration, remainingMediaDuration)
             guard playedDuration > 0.01 else { continue }
-            let sourceClipDuration = min(clipDuration.seconds, playedDuration * cue.playbackRate)
+            // Keep the whole source audio. Tiny media/SRT rounding differences are
+            // absorbed by the time mapping rather than cutting the final syllable.
+            let sourceClipDuration = clipDuration.seconds
+            let exportRate = sourceClipDuration / playedDuration
+            guard exportRate.isFinite, exportRate >= DubbingRenderedCue.minimumPlaybackRate,
+                  exportRate <= DubbingRenderedCue.maximumPlaybackRate else {
+                throw DubbingError.cannotFitFullAudio
+            }
             let insertedSourceDuration = CMTime(seconds: sourceClipDuration, preferredTimescale: 600)
             let targetDuration = CMTime(seconds: playedDuration, preferredTimescale: 600)
             let insertionTime = CMTime(seconds: cue.startSeconds, preferredTimescale: 600)

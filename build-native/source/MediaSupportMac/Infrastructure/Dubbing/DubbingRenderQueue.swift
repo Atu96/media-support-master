@@ -1,5 +1,27 @@
 import Foundation
 
+/// Shared budget across nested batches. Input/receipt keys serialize overlapping remote work.
+@MainActor
+final class DubbingWorkLimiter {
+    private let limit: Int
+    private var leases: [UUID: Set<String>] = [:]
+
+    init(limit: Int = 2) { self.limit = max(1, min(2, limit)) }
+
+    func acquire(keys: Set<String> = []) async throws -> UUID {
+        while leases.count >= limit || leases.values.contains(where: { !$0.isDisjoint(with: keys) }) {
+            try Task.checkCancellation()
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        try Task.checkCancellation()
+        let token = UUID()
+        leases[token] = keys
+        return token
+    }
+
+    func release(_ token: UUID) { leases.removeValue(forKey: token) }
+}
+
 /// Bounded structured tasks: cancellation/error drains workers before returning.
 @MainActor
 enum DubbingRenderQueue {

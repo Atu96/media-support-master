@@ -8,7 +8,29 @@ struct MaziaoAccountSnapshot: Codable, Equatable, Sendable {
 @MainActor
 enum MaziaoAPIClient {
     static let journal = MaziaoTaskJournal()
-    private static var isResolvingTask = false
+    private static let taskLimiter = DubbingWorkLimiter()
+    static let transferLimiter = DubbingWorkLimiter()
+
+    static func acquireBatch(_ requests: [DubbingSpeechRequest]) async throws -> UUID {
+        let account = try await accountDigest()
+        let parts = requests.map(MaziaoTaskJournal.partDigest)
+        while true {
+            let receiptParts = try journal.matching(account: account, parts: parts)?.partDigests ?? parts
+            let keys = Set(receiptParts.map { account + ":" + $0 })
+            let token = try await taskLimiter.acquire(keys: keys)
+            do {
+                guard try await accountDigest() == account else { throw CancellationError() }
+                let latestParts = try journal.matching(account: account, parts: parts)?.partDigests ?? parts
+                if Set(latestParts.map { account + ":" + $0 }).isSubset(of: keys) { return token }
+                taskLimiter.release(token)
+            } catch {
+                taskLimiter.release(token)
+                throw error
+            }
+        }
+    }
+
+    static func releaseBatch(_ token: UUID) { taskLimiter.release(token) }
 
     static func accountDigest() async throws -> String {
         let key = await DubbingCredentialAccess.shared.loadMaziao()
@@ -175,9 +197,6 @@ enum MaziaoAPIClient {
         characterCount: Int,
         progress: DubbingRenderProgressHandler?
     ) async throws -> [URL] {
-        guard !isResolvingTask else { throw DubbingError.speechTimedOut }
-        isResolvingTask = true
-        defer { isResolvingTask = false }
         let account = try await accountDigest()
         return try await MaziaoTaskRecovery.resolve(
             journal: journal, account: account, parts: requests.map(MaziaoTaskJournal.partDigest),
@@ -336,10 +355,14 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
         _ request: DubbingSpeechRequest,
         progress: DubbingRenderProgressHandler?
     ) async throws {
+        let lease = try await MaziaoAPIClient.acquireBatch([request])
+        defer { MaziaoAPIClient.releaseBatch(lease) }
         guard let voice = request.voiceIdentifier, !voice.isEmpty else {
             throw DubbingError.missingVoiceIdentifier("Maziao")
         }
         let urls = try await MaziaoAPIClient.singleAudioURLs(request, progress: progress)
+        let transfer = try await MaziaoAPIClient.transferLimiter.acquire()
+        defer { MaziaoAPIClient.transferLimiter.release(transfer) }
         await progress?(.downloading(current: 1, total: 1))
         let file = try await MaziaoAPIClient.audioFile(from: urls[0])
         defer { try? FileManager.default.removeItem(at: file) }
@@ -389,6 +412,8 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
     ) async throws {
         guard !requests.isEmpty else { return }
         if requests.count == 1 { try await render(requests[0], progress: progress); return }
+        let lease = try await MaziaoAPIClient.acquireBatch(requests)
+        defer { MaziaoAPIClient.releaseBatch(lease) }
         let urls = try await MaziaoAPIClient.batchAudioURLs(requests, progress: progress)
         let staged = requests.map {
             $0.outputURL.deletingLastPathComponent().appendingPathComponent(".maziao-\(UUID().uuidString).caf")
@@ -396,6 +421,8 @@ final class MaziaoDubbingSpeechService: DubbingSpeechBatchSynthesizing {
         defer { for url in staged { try? FileManager.default.removeItem(at: url) } }
         // At most two disk downloads/native buffers; never hold a batch of audio Data.
         try await DubbingRenderQueue.run(count: requests.count) { index in
+            let transfer = try await MaziaoAPIClient.transferLimiter.acquire()
+            defer { MaziaoAPIClient.transferLimiter.release(transfer) }
             await progress?(.downloading(current: index + 1, total: requests.count))
             let file = try await MaziaoAPIClient.audioFile(from: urls[index])
             defer { try? FileManager.default.removeItem(at: file) }

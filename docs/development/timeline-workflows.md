@@ -47,6 +47,12 @@ Mở **Kiểu sub → Vị trí phụ đề**. Mục này hiện trên cả Thi�
 
 Vị trí lưu trong style của dự án, không đổi chữ, timing hoặc ngắt dòng. Preview/video dùng chung cách đặt vị trí và giới hạn box chữ trong khung hình. Xem [kiểm tra vị trí](build-and-test.md#global-subtitle-position).
 
+## Canh độ dài lồng tiếng
+
+DUB mặc định đổi tốc độ phát để giữ đủ audio trong span SUB, không tạo giọng lại qua API. Kéo mép phải DUB để chỉnh độ dài riêng. Double-click mép về1×; bấm phải → **Khớp độ dài sub** để canh tự động lại. Tốc độ đã chỉnh thủ công được giữ khi đổi timing SUB. Cue quá nhanh/chậm được đánh dấu để xem lại; app không cắt chữ để giả vừa cue. SUB có timing chồng thì cần sửa timing trước.
+
+Maziao gửi theo nhóm, hiện tối đa2 nhóm đồng thời; tải/chuyển mã trên máy vẫn tối đa2. Nếu tài khoản báo giới hạn đồng thời, vào Cài đặt → Lồng tiếng → Maziao chọn1 nhóm, rồi bấm tạo lại để phục hồi receipt. Tốc độ còn phụ thuộc hàng đợi/model bên Maziao. Xem [thực thi lồng tiếng và kiểm tra API](dubbing.md).
+
 ## Xuất kết quả
 
 Ba nút riêng đã gom thành **Xuất** trên thanh công cụ:

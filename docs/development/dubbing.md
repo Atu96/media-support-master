@@ -8,6 +8,16 @@ The current source adds the following behavior after the published 1.0.1 install
 
 The queue uses structured child tasks and drains them on error/cancellation. Native conversion has its own cancellable utility worker, a 32,768-frame buffer, staging-file validation and a final file move. An older render/progress/cache-load callback cannot replace the current session's state. Completed valid clips remain available when another request fails.
 
+Maziao already uses `multiParts` batches around32 cues/4,000 characters, not one submit per cue. The current pipeline runs up to **two batches**, with a **one-batch** option in Settings → Dubbing → Maziao for accounts with lower concurrency. A shared limiter caps all downloads/conversions at two, including nested batches. Account/input/full-receipt leases remain held through local commit/finish; overlapping inputs or recovered receipts serialize so another worker cannot delete the receipt prematurely. Requests retain existing validation, model/voice and recovery semantics; concurrency/rate-limit failures do not trigger blind paid retries.
+
+## Subtitle duration and manual editing
+
+At the user's request on2026-10-12, default playback now fits the complete generated audio into the SUB span: `rate = audioDuration / subtitleDuration`. Native lane, preview and mix export share this effective rate. This is a local time mapping; it does not regenerate speech, change the provider generation-speed request, or reencode cache files just to fit. Existing explicit manual rates retain precedence.
+
+Drag the right edge of a DUB cue to adjust its duration independently of SUB. Double-click the edge restores explicit natural1×. Right-click → **Fit subtitle duration** removes the override and returns to automatic fit. Changing SUB timing updates the default fit while retaining manual overrides. Original overlapping SUB timings or intentionally stretched DUB can still overlap and require review.
+
+The voice-oriented [Apple timeDomain algorithm](https://developer.apple.com/documentation/avfoundation/avaudiotimepitchalgorithm/timedomain) supports1/32–32 playback rates. Speeds outside0.25–4 are marked for review; a span needing rates outside the native range cannot be matched exactly. Export includes the whole source audio, absorbs small media/SRT rounding differences through time mapping, and reports audio beyond the media or unsupported rates instead of silently cutting words. Native support does not imply intelligible speech at extreme speeds.
+
 ## Maziao recovery
 
 After submit returns a task ID, `MaziaoTaskJournal` atomically stores that receipt, original part order, character count and SHA-256 input/credential digests under Application Support/MaziaoPendingTasks. Raw keys, cue text and signed result URLs are not stored. Polling retains the existing adaptive interval and timeout policy.
@@ -34,4 +44,6 @@ Core regressions cover receipt persistence/relaunch/subset ordering/account isol
 
 A TEST-only launcher hook exercises the real session with a fake provider and isolated preferences/cache. See [build and test](build-and-test.md). Paid-provider wall-clock performance, long real videos and subjective voice quality need separate measurements; fixture success does not certify those.
 
-Context stitching remains outside this change. In particular, the selected Eleven v3 does not support it according to the [official stitching guide](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching). Any future supported-model context option must include context in the cache identity. No automatic speed fitting or offline AI model is added.
+Context stitching remains outside this change. In particular, the selected Eleven v3 does not support it according to the [official stitching guide](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching). Any future supported-model context option must include context in the cache identity. No new offline AI model is added.
+
+Live check on2026-10-12: an explicitly authorized TEST probe sent628 characters of fixed English diagnostic text in two tasks/four parts, using the configured Maziao voice/model. Both tasks waited on the provider concurrently; four CAF files validated successfully. Total wall time was36.91s, and both jobs still reported processing at30s. This supports the pipeline contract on that account, not a fixed speedup: no serial comparison, long user video, every model/account or subjective voice-quality benchmark was performed. The [official API document](https://app.maziao.com/api-documentation.md) defines `multiParts` as separate audio files; [Maziao's plans](https://maziao.com/en) describe tier-dependent API concurrency.

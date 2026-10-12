@@ -497,14 +497,22 @@ struct DubbingRenderedCue: Identifiable, Equatable, Sendable {
 
     var cueDuration: Double { max(0, endSeconds - startSeconds) }
 
-    static let minimumPlaybackRate = 0.25
-    static let maximumPlaybackRate = 4.0
+    // Native timeDomain supports this range; unusually fast/slow speech is still flagged for review.
+    static let minimumPlaybackRate = 1.0 / 32
+    static let maximumPlaybackRate = 32.0
+    static let comfortablePlaybackRates = 0.25...4.0
 
-    /// Natural speech is the default. A rate only changes after an explicit
-    /// user action, so a long title never stretches a short voice by itself.
+    /// Default fits the complete audio into the current SUB span. Explicit manual rates win.
     var playbackRate: Double {
-        guard let playbackRateOverride, playbackRateOverride.isFinite else { return 1 }
-        return min(Self.maximumPlaybackRate, max(Self.minimumPlaybackRate, playbackRateOverride))
+        let requested: Double
+        if let playbackRateOverride, playbackRateOverride.isFinite {
+            requested = playbackRateOverride
+        } else if cueDuration.isFinite, cueDuration > 0, audioDuration.isFinite, audioDuration > 0 {
+            requested = audioDuration / cueDuration
+        } else {
+            requested = 1
+        }
+        return min(Self.maximumPlaybackRate, max(Self.minimumPlaybackRate, requested))
     }
 
     var playedDuration: Double {
@@ -513,7 +521,9 @@ struct DubbingRenderedCue: Identifiable, Equatable, Sendable {
     }
 
     var fit: Fit {
-        guard playedDuration <= cueDuration + 0.08 else { return .needsReview }
+        guard cueDuration.isFinite, cueDuration > 0, playedDuration > 0,
+              playedDuration <= cueDuration + 0.08,
+              Self.comfortablePlaybackRates.contains(playbackRate) else { return .needsReview }
         return abs(playbackRate - 1) <= 0.001 ? .fits : .adjusted
     }
 
@@ -730,6 +740,8 @@ enum DubbingFingerprint {
 }
 
 enum DubbingError: LocalizedError {
+    case audioOutsideMedia
+    case cannotFitFullAudio
     case emptyText
     case noVoice(String)
     case invalidAudioBuffer
@@ -745,6 +757,8 @@ enum DubbingError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .audioOutsideMedia: L10n.string("Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời.")
+        case .cannotFitFullAudio: L10n.string("Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất.")
         case .emptyText: "Cue không có nội dung để lồng tiếng."
         case let .noVoice(language): "Máy chưa có giọng đọc cho \(language)."
         case .invalidAudioBuffer: "Apple TTS không trả về dữ liệu âm thanh hợp lệ."

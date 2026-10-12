@@ -245,6 +245,16 @@
 "Màu hiệu ứng" = "效果颜色";
 "Lên trên" = "向上";
 "Vị trí phụ đề" = "字幕位置";
+"Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất." = "片段过短，无法在支持的播放速度范围内保留完整语音。请在导出前延长片段。";
+"Khớp độ dài sub" = "匹配字幕时长";
+"Đã khớp độ dài sub cho %d cue." = "已将%d个配音片段匹配字幕时长。";
+"Tốc độ tự nhiên 1×" = "自然速度1×";
+"DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại." = "配音默认匹配字幕时长。拖动末端可单独调整，双击恢复1×，右键可重新匹配。";
+"Tác vụ Maziao cùng lúc" = "Maziao并发任务";
+"1 nhóm" = "1组";
+"2 nhóm" = "2组";
+"Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm." = "Maziao最多并行2组，本地下载和转换仍限2个任务。若账户提示并发限制，请选择1组。";
+"Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời." = "配音超出媒体时长。请在导出前调整片段，以保留完整语音。";
 "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "输入或粘贴脚本，与视频或音频中的语音对齐以生成字幕，保留原文内容。";
 "Lấy sub từ âm thanh" = "从音频生成字幕";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "识别视频或音频中的语音并生成字幕。";

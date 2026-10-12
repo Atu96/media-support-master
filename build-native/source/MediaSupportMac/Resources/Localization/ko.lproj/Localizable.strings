@@ -245,6 +245,16 @@
 "Màu hiệu ứng" = "효과 색상";
 "Lên trên" = "위로";
 "Vị trí phụ đề" = "자막 위치";
+"Cue quá ngắn để giữ đủ lời trong giới hạn tốc độ. Hãy kéo dài cue trước khi xuất." = "지원 재생 속도 범위에서 모든 말을 유지하기에는 구간이 너무 짧습니다. 내보내기 전에 구간을 늘리세요.";
+"Khớp độ dài sub" = "자막 길이에 맞추기";
+"Đã khớp độ dài sub cho %d cue." = "%d개 자막 구간의 길이에 맞췄습니다.";
+"Tốc độ tự nhiên 1×" = "자연 속도 1×";
+"DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại." = "더빙은 기본적으로 자막 길이에 맞춰집니다. 끝을 끌어 조정하고, 두 번 클릭해 1×로, 오른쪽 클릭해 다시 맞춥니다.";
+"Tác vụ Maziao cùng lúc" = "Maziao 동시 작업";
+"1 nhóm" = "1개 그룹";
+"2 nhóm" = "2개 그룹";
+"Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm." = "Maziao는 최대 2개 그룹, 로컬 다운로드와 변환은 최대 2개 작업입니다. 계정 동시 실행 제한 오류가 나면 1개 그룹을 선택하세요.";
+"Lồng tiếng vượt thời lượng media. Hãy chỉnh cue trước khi xuất để giữ đủ lời." = "더빙이 미디어 길이를 초과합니다. 모든 말을 유지하려면 내보내기 전에 구간을 조정하세요.";
 "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản." = "대본을 입력하거나 붙여 넣고 영상 또는 오디오의 말에 맞춰 자막을 생성합니다. 원문은 유지됩니다.";
 "Lấy sub từ âm thanh" = "음성에서 자막 생성";
 "Nghe lời nói trong video hoặc audio để tạo phụ đề." = "영상 또는 오디오의 말을 인식해 자막을 생성합니다.";

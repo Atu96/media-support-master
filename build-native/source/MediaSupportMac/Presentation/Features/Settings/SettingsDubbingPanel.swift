@@ -169,6 +169,18 @@ struct SettingsDubbingPanel: View {
 
             maziaoUsageCard
 
+            DubbingSettingsLabeledRow("Tác vụ Maziao cùng lúc") {
+                Picker("Tác vụ Maziao cùng lúc", selection: $session.maziaoConcurrentBatches) {
+                    Text(L10n.string("1 nhóm")).tag(1)
+                    Text(L10n.string("2 nhóm")).tag(2)
+                }
+                .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 220)
+                .disabled(session.isRendering)
+            }
+            Text(L10n.string("Tối đa 2 nhóm trên Maziao; tải và chuyển mã trên máy vẫn tối đa 2 tác vụ. Nếu tài khoản báo giới hạn đồng thời, chọn 1 nhóm."))
+                .font(AppFont.caption).foregroundStyle(AppTheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+
             DubbingExternalLinkButton(
                 title: L10n.format("Xem mẫu giọng %@ trên web", session.maziaoModel.label),
                 url: "https://app.maziao.com/?utm_campaign=see_all_voices&utm_medium=voice_demo&utm_source=media_support_master"

@@ -397,7 +397,8 @@ struct DubbingTimelineLane: NSViewRepresentable {
         view.onRatePreview = session.previewPlaybackRates
         view.onRateCommit = session.commitPlaybackRateChanges
         view.onResetRate = session.resetPlaybackRate
-        view.toolTip = L10n.string("Kéo đuôi DUB: dài hơn = chậm, ngắn hơn = nhanh; double-click để về 1×.")
+        view.onFitRate = session.fitPlaybackRateToSub
+        view.toolTip = L10n.string("DUB mặc định khớp độ dài SUB. Kéo đuôi để chỉnh riêng; double-click về 1×; bấm phải để khớp lại.")
         view.window?.invalidateCursorRects(for: view)
         view.needsDisplay = true
     }
@@ -416,6 +417,7 @@ final class DubbingTimelineLaneNSView: NSView {
     var onRatePreview: (([Int: Double]) -> Void)?
     var onRateCommit: ((Set<Int>) -> Void)?
     var onResetRate: ((Set<Int>) -> Void)?
+    var onFitRate: ((Set<Int>) -> Void)?
 
     private enum DragMode { case none, select, stretch, marquee }
     private enum MarqueeMode { case replace, add, toggle }
@@ -429,6 +431,32 @@ final class DubbingTimelineLaneNSView: NSView {
     private var selectionAtMouseDown: Set<Int> = []
     private var marqueeMode: MarqueeMode = .replace
     private let edgeWidth: CGFloat = 10
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let cue = cues.reversed().first(where: { frame(for: $0).contains(point) }) else { return nil }
+        let ids = selectedIDs.contains(cue.id) ? selectedIDs.intersection(cues.map(\.id)) : [cue.id]
+        if !selectedIDs.contains(cue.id) { onSelect?(cue.id, .replace) }
+        let menu = NSMenu()
+        for (title, action) in [("Khớp độ dài sub", #selector(fitFromMenu(_:))),
+                                ("Tốc độ tự nhiên 1×", #selector(naturalFromMenu(_:)))] {
+            let item = NSMenuItem(title: L10n.string(title), action: action, keyEquivalent: "")
+            item.target = self
+            item.representedObject = Array(ids)
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func fitFromMenu(_ sender: NSMenuItem) {
+        guard let ids = sender.representedObject as? [Int] else { return }
+        onFitRate?(Set(ids))
+    }
+
+    @objc private func naturalFromMenu(_ sender: NSMenuItem) {
+        guard let ids = sender.representedObject as? [Int] else { return }
+        onResetRate?(Set(ids))
+    }
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
