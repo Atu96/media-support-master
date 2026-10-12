@@ -143,6 +143,9 @@ enum MediaSupportCoreTests {
         run("Maziao metadata phân trang giữ total, limit và offset", testMaziaoVoicePageMetadata)
         run("Maziao length kiểm tra biên và không sửa nội dung", testMaziaoLengthBoundary)
         run("Maziao batch giữ thứ tự và xử lý nhóm cuối ngắn", testMaziaoBatchPlanning)
+        run("Maziao gom cue thành đoạn, giữ SUB/span/ngữ cảnh và gap", testMaziaoContextPlanning)
+        run("Maziao context giữ Unicode, ngân sách và từ chối QC hỏng", testMaziaoContextBudgets)
+        run("Cache đoạn tách cue cũ và giữ stable ID cho tốc độ", testMaziaoContextCache)
         run("Maziao multiParts giữ từng câu và cấu hình", testMaziaoBatchRequest)
         run("Maziao multiParts kiểm tra đủ tệp trước gán cue", testMaziaoBatchResults)
         run("Maziao polling thích ứng không hết hạn sớm", testMaziaoPollingPolicy)
@@ -2597,6 +2600,58 @@ enum MediaSupportCoreTests {
         } catch MaziaoTextError.tooShort { }
         let emptyBatches = try MaziaoBatchPlanner.batches(for: [])
         try expect(emptyBatches.isEmpty, "cache toàn bộ không cần request")
+    }
+
+    private static func testMaziaoContextPlanning() throws {
+        let text = "A complete short sentence for this subtitle."
+        let source = (1...6).map { segment(id: $0, start: Double($0 - 1) * 2, end: Double($0 - 1) * 2 + 1.8, text: text) }
+        let snapshot = source
+        let groups = try MaziaoContextPlanner.groups(source, language: "en-US")
+        try expect(groups.count == 1 && groups[0].sourceIDs == Set(1...6), "short tail should join its adjacent paragraph")
+        try expect(groups[0].cue.text == source.map(\.text).joined(separator: " "), "must include all words in order")
+        try expect(groups[0].cue.startSeconds == 0 && groups[0].cue.endSeconds == 11.8 && source == snapshot, "must keep SUB unchanged and fit whole span")
+        let separated = source + [segment(id: 7, start: 20, end: 22, text: "A reply.")]
+        let scenes = try MaziaoContextPlanner.groups(separated, language: "en")
+        try expect(scenes.count == 2 && scenes[1].cue.startSeconds == 20, "long pauses must remain separate")
+        let selected = scenes.filter { !$0.sourceIDs.isDisjoint(with: [2]) }
+        try expect(selected.count == 1 && selected[0].sourceIDs == Set(1...6), "selected cue must resolve to its complete paragraph")
+    }
+
+    private static func testMaziaoContextBudgets() throws {
+        for (language, text, separator) in [("vi", "Xin chào các bạn.", " "), ("en", "Welcome everyone.", " "),
+                                          ("ko", "모두 안녕하세요.", " "), ("zh", "大家好。", ""), ("ja", "こんにちは。", "")] {
+            let cues = (1...4).map { segment(id: $0, start: Double($0 - 1), end: Double($0), text: text) }
+            let groups = try MaziaoContextPlanner.groups(cues, language: language)
+            try expect(groups.count == 1 && groups[0].cue.text == Array(repeating: text, count: 4).joined(separator: separator), "Unicode joining \(language)")
+        }
+        let many = (1...300).map { segment(id: $0, start: Double($0 - 1), end: Double($0), text: "A short complete sentence.") }
+        let planned = try MaziaoContextPlanner.groups(many, language: "en")
+        try expect(planned.allSatisfy { $0.cue.durationSeconds <= 30 && $0.cue.text.count <= 900 && $0.sourceIDs.count <= 24 }, "group budget exceeded")
+        let tiny = (1...100).map { segment(id: $0, start: Double($0 - 1) * 0.05, end: Double($0) * 0.05, text: "a") }
+        try expect(try MaziaoContextPlanner.groups(tiny, language: "en").allSatisfy { $0.sourceIDs.count <= 24 }, "short-tail repair must keep cue budget")
+        try expect(planned.flatMap { $0.sourceIDs }.count == 300, "source coverage lost")
+        for invalid in [[segment(id: 1, start: 0, end: 2, text: "x"), segment(id: 2, start: 1, end: 3, text: "y")],
+                        [segment(id: 1, start: 0, end: 1, text: "")],
+                        [segment(id: 1, start: 0, end: 1, text: "x"), segment(id: 1, start: 2, end: 3, text: "y")]] {
+            do { _ = try MaziaoContextPlanner.groups(invalid, language: "en"); throw TestFailure(description: "invalid grouping accepted") }
+            catch is MaziaoContextPlanningError { }
+        }
+    }
+
+    private static func testMaziaoContextCache() throws {
+        let a = segment(id: 1, start: 0, end: 3, text: "First paragraph.")
+        let b = segment(id: 2, start: 6, end: 9, text: "Second paragraph.")
+        let remap = MaziaoContextPlanner.cachePreservation(previous: [a, b], updated: [segment(id: 1, start: 6, end: 9, text: b.text)])
+        try expect(remap[0].id == 2 && SRTSegmentEditor.reindexed(remap)[0].id == 1, "rate/cache alias must use stable old group ID")
+        let old = DubbingFingerprint.make(cue: a, localeIdentifier: "en", voiceIdentifier: "qa", rate: 0.5, provider: .maziao, modelIdentifier: "lingual_speech_v2")
+        let new = DubbingFingerprint.make(cue: a, localeIdentifier: "en", voiceIdentifier: "qa", rate: 0.5, provider: .maziao, modelIdentifier: "msm-context-v1|lingual_speech_v2")
+        try expect(old != new, "context must not load previously distorted cue audio")
+        let source = [segment(id: 1, start: 0, end: 2, text: String(repeating: "word ", count: 12)),
+                      segment(id: 2, start: 2, end: 4, text: String(repeating: "more ", count: 12))]
+        let unit = try MaziaoContextPlanner.groups(source, language: "en")[0].cue
+        let body = try MaziaoRequestEncoder.submitBody(text: unit.text, voiceID: "qa", modelID: "lingual_speech_v2", speed: 1)
+        let json = try require(JSONSerialization.jsonObject(with: body) as? [String: Any], "paragraph JSON")
+        try expect(json["mode"] as? String == "paragraph", "single context must be one paragraph synthesis")
     }
 
     private static func testMaziaoBatchRequest() throws {

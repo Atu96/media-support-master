@@ -80,6 +80,8 @@ The Timeline now distinguishes audio transcription, burned-in video OCR and crea
 
 Optional OCR/audio comparison keeps the current transcript while you review and choose a second source. An original script can reuse existing cue times without new transcription when it matches sufficiently. See [comparison and original text priority](docs/development/subtitle-comparison.md).
 
+Maziao dubbing can now group nearby subtitle cues into connected speech paragraphs, each represented by one editable DUB block. The default adds text context without additional speech recognition; SUB stays unchanged and the previous per-cue mode remains available. See [paragraph behavior and limits](docs/development/dubbing.md#maziao-short-cue-context).
+
 ## License
 
 An open-source license has not been selected for this project's own code. Public access to the repository does not grant a new open-source license. Third-party components retain their own licenses; see [notices](THIRD_PARTY_NOTICES.md).

@@ -730,3 +730,14 @@
 "Chưa tải model Whisper Offline trong Cài đặt." = "設定でWhisper Offlineモデルをまだダウンロードしていません。";
 "Bản hiện có: %@ · Bản bổ trợ: %@" = "現在: %@ · 補助: %@";
 "Khớp lại từ âm thanh" = "音声から再調整";
+"Cách tạo giọng Maziao" = "Maziao音声生成方式";
+"Đoạn liền mạch" = "連続した段落";
+"Từng cue" = "キューごと";
+"Đoạn liền mạch gom cue gần nhau để giọng có ngữ cảnh; một khối DUB phủ nhiều cue SUB và vẫn kéo chỉnh riêng. Không nhận diện audio thêm. Từng cue giữ cách cũ." = "近接キューを段落にまとめて文脈を与えます。1つのDUBが複数のSUBを覆い、個別に調整できます。追加音声認識は行いません。キューごとは従来方式です。";
+"%d / %d đoạn đã có giọng" = "%d / %d段落に音声あり";
+"DUB theo đoạn; SUB giữ từng cue. Lồng cue chọn sẽ tạo cả đoạn chứa cue đó, gồm các cue liền kề." = "DUBは段落、SUBはキュー単位です。選択キューの吹き替えは、隣接キューを含む段落全体を生成します。";
+"%d đoạn còn rất ngắn vì khoảng nghỉ; giọng có thể chưa ổn định. App không thêm chữ hoặc ghép qua khoảng nghỉ dài." = "休止により%d段落が短いため、音声が不安定な場合があります。文字を追加せず、長い休止をまたいで結合しません。";
+"Tạo trọn đoạn chứa các cue đã chọn, gồm các cue liền kề trong đoạn." = "選択キューと同じ段落の隣接キューを含めて、段落全体を生成します。";
+"Đã tạo giọng cho %d đoạn liền mạch." = "連続した%d段落の音声を生成しました。";
+"Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "段落にできません。空キュー、重複ID、時間の重複または不正があります。先にQCを修正してください。";
+"Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "一度に段落化するには字幕が大きすぎます。短い部分に分けてください。";

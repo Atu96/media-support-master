@@ -35,11 +35,13 @@ enum NativeDubbingOptimizationSmoke {
         var active = 0
         var peak = 0
         func render(_ request: DubbingSpeechRequest) async throws { try await speech.render(request) }
+        var received: [DubbingSpeechRequest] = []
         func stop() { speech.stop() }
         func renderBatches(for requests: [DubbingSpeechRequest]) async throws -> [[DubbingSpeechRequest]] {
             stride(from: 0, to: requests.count, by: 2).map { Array(requests[$0..<min($0 + 2, requests.count)]) }
         }
         func renderBatch(_ requests: [DubbingSpeechRequest], progress: DubbingRenderProgressHandler?) async throws {
+            received += requests
             active += 1; peak = max(peak, active)
             defer { active -= 1 }
             await progress?(.waiting(stage: .processing, elapsedSeconds: 0, timeoutSeconds: 300))
@@ -114,6 +116,7 @@ enum NativeDubbingOptimizationSmoke {
         guard let batchSession = DubbingSessionModel.optimizationSmokeSession(defaults: defaults, cache: batchCache, speech: batchSpeech)
         else { throw DubbingError.invalidAudioBuffer }
         batchSession.speechProvider = .maziao
+        batchSession.maziaoDubbingStyle = .cues
         batchSession.maziaoVoiceIdentifier = "qa-voice"
         let batchCues = (1...9).map { cue($0, "Câu số \($0)") }
         batchSession.renderAll(cues: batchCues)
@@ -124,8 +127,65 @@ enum NativeDubbingOptimizationSmoke {
         try check(batchSession.errorMessage == nil && batchSession.renderedByCueID.count == 9
                   && batchSpeech.peak == 2 && batchSession.progressCurrent == 9)
         try check(batchSession.effectiveRenderedCues.allSatisfy { abs($0.playedDuration - $0.cueDuration) < 0.001 })
+        try await paragraphSmoke(directory: directory, defaults: defaults)
         try await fitExportSmoke(directory: directory)
         print("DUBBING_SMOKE_OK bounded=2 maziaoBatches=2 autoFit=SUB manualRate=preserved natural1x=explicit refit=restored repeatedSpeech=deduplicated cancellation=latest-preserved noAPI=true")
+    }
+
+    private static func paragraphSmoke(directory: URL, defaults: UserDefaults) async throws {
+        let speech = BatchSpeech()
+        let cache = DubbingCacheStore(rootURL: directory.appendingPathComponent("paragraph-cache"))
+        guard let session = DubbingSessionModel.optimizationSmokeSession(defaults: defaults, cache: cache, speech: speech) else { throw DubbingError.invalidAudioBuffer }
+        session.speechProvider = .maziao; session.maziaoVoiceIdentifier = "qa-context-voice"
+        session.maziaoDubbingStyle = .paragraphs
+        func check(_ value: Bool) throws { if !value { throw DubbingError.invalidAudioBuffer } }
+        func wait() async throws {
+            for _ in 0..<1_000 {
+                if !session.isRendering { break }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            try check(!session.isRendering && session.errorMessage == nil)
+        }
+        let source = (1...6).map { id in
+            let start = id <= 3 ? Double(id - 1) * 2 : 12 + Double(id - 4) * 2
+            return SRTSegment(id: id, index: id, timing: SRTTimecode.makeTiming(start: start, end: start + 2),
+                startSeconds: start, endSeconds: start + 2,
+                text: "Sentence \(id) belongs to this connected paragraph.")
+        }
+        let groups = try MaziaoContextPlanner.groups(source, language: session.languageIdentifier)
+        try check(groups.count == 2)
+        session.renderSelected(cues: source, selectedIDs: [2])
+        let shifted = source.map { cue in
+            SRTSegment(id: cue.id, index: cue.index,
+                timing: SRTTimecode.makeTiming(start: cue.startSeconds + 0.5, end: cue.endSeconds + 0.5),
+                startSeconds: cue.startSeconds + 0.5, endSeconds: cue.endSeconds + 0.5, text: cue.text)
+        }
+        session.synchronize(cues: shifted)
+        try await wait()
+        try check(session.renderedByCueID.count == 1 && speech.received.count == 1
+            && speech.received[0].text == groups[0].cue.text
+            && speech.received[0].modelIdentifier == session.selectedModelIdentifier
+            && session.effectiveRenderedCues[0].cueDuration == 6
+            && session.effectiveRenderedCues[0].startSeconds == 0.5)
+        session.previewPlaybackRates([1: 1.4]); session.commitPlaybackRateChanges(cueIDs: [1])
+        session.renderAll(cues: source)
+        try await wait()
+        try check(session.renderedByCueID.count == 2 && speech.received.count == 2
+            && session.effectiveRenderedCue(cueID: 1)?.playbackRate == 1.4)
+        session.previewPlaybackRates([2: 1.1]); session.commitPlaybackRateChanges(cueIDs: [2])
+        session.synchronize(cues: Array(source.suffix(3)))
+        try await Task.sleep(for: .milliseconds(200))
+        try check(session.renderedByCueID.count == 1 && session.effectiveRenderedCue(cueID: 1)?.playbackRate == 1.1)
+        session.removeRenderedCues(cueIDs: [1]); session.synchronize(cues: Array(source.suffix(3)))
+        try await Task.sleep(for: .milliseconds(100))
+        try check(session.renderedByCueID.isEmpty)
+        session.synchronize(cues: source)
+        try await Task.sleep(for: .milliseconds(150))
+        try check(session.renderedByCueID[2] == nil)
+        session.renderAll(cues: source)
+        session.cancelRendering()
+        try await Task.sleep(for: .milliseconds(100))
+        print("MAZIAO_CONTEXT_SMOKE_OK SUB=unchanged selected=wholeParagraph groups=2 providerModel=unmodified cache=isolated rate=preserved latestTiming=kept reindex=preserved deleted=kept cancellation=drained noAPI=true")
     }
 
     private static func fitExportSmoke(directory: URL) async throws {
@@ -185,6 +245,55 @@ enum NativeDubbingOptimizationSmoke {
 /// Explicit TEST-only paid probe: fixed English samples, no personal subtitle input.
 @MainActor
 enum NativeMaziaoPipelineProbe {
+    static func runContextContrast(directory: URL) async throws {
+        let defaults = UserDefaults.standard
+        let voice = (defaults.string(forKey: "msm.dubbing.maziaoVoice") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !voice.isEmpty else { print("MAZIAO_CONTEXT_PROBE_SKIPPED noConfiguredVoice=true"); return }
+        _ = try await MaziaoAPIClient.accountDigest()
+        let model = MaziaoDubbingModel(rawValue: defaults.string(forKey: "msm.dubbing.maziaoModel") ?? "") ?? .lingualV2
+        let rate: Float = defaults.object(forKey: "msm.dubbing.rate") == nil ? 0.5 : defaults.float(forKey: "msm.dubbing.rate")
+        let vietnamese = model == .vieten || model == .lingualV2
+        let locale = vietnamese ? "vi-VN" : "en-US"
+        let texts = vietnamese
+            ? ["Xin chào các bạn.", "Hôm nay chúng ta cùng kiểm tra phần lồng tiếng.",
+               "Các câu ngắn này thuộc một đoạn nói liền mạch.", "Hãy nghe giọng đọc có giữ ổn định từ đầu đến cuối không."]
+            : ["Good morning, everyone.", "Today we will review our subtitle workflow.",
+               "These short lines belong to one complete paragraph.", "Please listen for a steady voice from start to finish."]
+        let context = texts.joined(separator: " ")
+        let characters = context.count + texts.reduce(0) { $0 + $1.count }
+        guard context.count > 100, characters <= 500 else { throw DubbingError.invalidAudioBuffer }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let paragraph = DubbingSpeechRequest(cueID: 100, text: context, localeIdentifier: locale, voiceIdentifier: voice,
+            rate: rate, outputURL: directory.appendingPathComponent("paragraph.caf"), provider: .maziao, modelIdentifier: model.rawValue)
+        let short = texts.enumerated().map { index, text in
+            DubbingSpeechRequest(cueID: index + 1, text: text, localeIdentifier: locale, voiceIdentifier: voice,
+                rate: rate, outputURL: directory.appendingPathComponent("short-\(index + 1).caf"), provider: .maziao, modelIdentifier: model.rawValue)
+        }
+        let service = MaziaoDubbingSpeechService(), started = Date()
+        print("MAZIAO_CONTEXT_PROBE_START fixedCharacters=\(characters) language=\(locale) tasks=2 paragraph=1 shortParts=4")
+        try await DubbingRenderQueue.run(count: 2, operation: { index in
+            try await service.renderBatch(index == 0 ? [paragraph] : short) { progress in
+                if case let .waiting(stage, elapsed, _) = progress, elapsed % 10 == 0 {
+                    print("MAZIAO_CONTEXT_PROBE group=\(index + 1) stage=\(stage) elapsedSeconds=\(elapsed)")
+                }
+            }
+        })
+        let paragraphDuration = await DubbingCacheStore.audioDuration(at: paragraph.outputURL)
+        guard DubbingAudioValidation.isPlausible(duration: paragraphDuration, text: context) else { throw DubbingError.invalidAudioBuffer }
+        var clips: [DubbingAudioMergeClip] = [], offset = 0.0
+        for request in short {
+            let duration = await DubbingCacheStore.audioDuration(at: request.outputURL)
+            guard DubbingAudioValidation.isPlausible(duration: duration, text: request.text) else { throw DubbingError.invalidAudioBuffer }
+            clips.append(.init(audioURL: request.outputURL, startOffset: offset, playbackRate: 1))
+            offset += duration + 0.2
+        }
+        _ = try await DubbingAudioMergeService.merge(clips: [.init(audioURL: paragraph.outputURL, startOffset: 0, playbackRate: 1)],
+            outputURL: directory.appendingPathComponent("paragraph-natural.m4a"))
+        _ = try await DubbingAudioMergeService.merge(clips: clips, outputURL: directory.appendingPathComponent("short-cues-natural.m4a"))
+        print(String(format: "MAZIAO_CONTEXT_PROBE_OK files=5 paragraphSeconds=%.2f shortSeconds=%.2f totalSeconds=%.2f playback=1x quality=requiresListening",
+            paragraphDuration, offset - 0.2, Date().timeIntervalSince(started)))
+    }
+
     static func run(directory: URL) async throws {
         let defaults = UserDefaults.standard
         let voice = (defaults.string(forKey: "msm.dubbing.maziaoVoice") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

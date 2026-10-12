@@ -77,6 +77,7 @@ SOURCES=(
     "$SRC/Infrastructure/Dubbing/DubbingAudioTranscoder.swift"
     "$SRC/Infrastructure/Dubbing/DubbingAudioMergeService.swift"
     "$SRC/Domain/Dubbing/MaziaoResponseDecoder.swift"
+    "$SRC/Domain/Dubbing/MaziaoContextPlanner.swift"
     "$SRC/App/Localization/L10n.swift"
     "$TEST_SRC"
 )

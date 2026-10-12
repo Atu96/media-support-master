@@ -31,6 +31,7 @@ struct DubbingInspectorPanel: View {
         .onChange(of: session.googleVoiceIdentifier) { _, _ in session.synchronize(cues: cues) }
         .onChange(of: session.maziaoModel) { _, _ in session.synchronize(cues: cues) }
         .onChange(of: session.maziaoVoiceIdentifier) { _, _ in session.synchronize(cues: cues) }
+        .onChange(of: session.maziaoDubbingStyle) { _, _ in session.synchronize(cues: cues) }
         .onChange(of: session.elevenModel) { _, _ in session.synchronize(cues: cues) }
         .onChange(of: session.elevenVoiceIdentifier) { _, _ in session.synchronize(cues: cues) }
         .onChange(of: session.speechRate) { _, _ in session.synchronize(cues: cues) }
@@ -54,10 +55,18 @@ struct DubbingInspectorPanel: View {
                 Circle()
                     .fill(session.isRendering ? AppTheme.accentOrange : (readyCount > 0 ? AppTheme.accentGreen : AppTheme.mutedText))
                     .frame(width: 8, height: 8)
-                Text(L10n.format("%d / %d cue đã có giọng", readyCount, cues.count))
+                Text(L10n.format(session.usesMaziaoParagraphs ? "%d / %d đoạn đã có giọng" : "%d / %d cue đã có giọng", readyCount, session.plannedDubbingCount))
                     .font(AppFont.label)
                     .foregroundStyle(AppTheme.headlineText)
                 Spacer(minLength: 0)
+            }
+            if session.usesMaziaoParagraphs {
+                Text("DUB theo đoạn; SUB giữ từng cue. Lồng cue chọn sẽ tạo cả đoạn chứa cue đó, gồm các cue liền kề.")
+                    .font(AppFont.caption).foregroundStyle(AppTheme.mutedText).fixedSize(horizontal: false, vertical: true)
+                if session.shortParagraphCount > 0 {
+                    Text(L10n.format("%d đoạn còn rất ngắn vì khoảng nghỉ; giọng có thể chưa ổn định. App không thêm chữ hoặc ghép qua khoảng nghỉ dài.", session.shortParagraphCount))
+                        .font(AppFont.caption).foregroundStyle(AppTheme.accentOrange).fixedSize(horizontal: false, vertical: true)
+                }
             }
             if session.isRendering, session.progressTotal > 0 {
                 ProgressView(value: Double(session.progressCurrent), total: Double(session.progressTotal))

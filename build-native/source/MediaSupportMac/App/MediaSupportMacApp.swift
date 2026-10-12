@@ -5,6 +5,16 @@ import AppKit
 enum MediaSupportMacLauncher {
     static func main() {
         if Bundle.main.object(forInfoDictionaryKey: "MediaSupportBuildChannel") as? String == "test",
+           ProcessInfo.processInfo.environment["MSM_ALLOW_PAID_MAZIAO_PROBE"] == "1",
+           let path = ProcessInfo.processInfo.environment["MSM_MAZIAO_CONTEXT_PROBE_DIR"] {
+            Task {
+                do { try await NativeMaziaoPipelineProbe.runContextContrast(directory: URL(fileURLWithPath: path)); exit(0) }
+                catch { print("MAZIAO_CONTEXT_PROBE_FAILED: \(error.localizedDescription)"); exit(1) }
+            }
+            RunLoop.main.run()
+            return
+        }
+        if Bundle.main.object(forInfoDictionaryKey: "MediaSupportBuildChannel") as? String == "test",
            let path = ProcessInfo.processInfo.environment["MSM_SUBTITLE_COMPARISON_SMOKE_DIR"] {
             Task {
                 do { try await NativeSubtitleComparisonSmoke.run(directory: URL(fileURLWithPath: path)); exit(0) }

@@ -13,6 +13,8 @@ final class DubbingSessionModel: ObservableObject {
     }
 
     @Published private(set) var renderedByCueID: [Int: DubbingRenderedCue] = [:]
+    @Published private(set) var plannedDubbingCount = 0
+    @Published private(set) var shortParagraphCount = 0
     @Published private(set) var playbackRateByFingerprint: [String: Double] = [:]
     @Published private(set) var renderingCueIDs: Set<Int> = []
     @Published private(set) var progressCurrent = 0
@@ -61,6 +63,22 @@ final class DubbingSessionModel: ObservableObject {
     @Published var maziaoConcurrentBatches: Int {
         didSet { defaults.set(min(2, max(1, maziaoConcurrentBatches)), forKey: Keys.maziaoConcurrentBatches) }
     }
+    @Published var maziaoDubbingStyle: MaziaoDubbingStyle {
+        didSet {
+            defaults.set(maziaoDubbingStyle.rawValue, forKey: Keys.maziaoDubbingStyle)
+            if oldValue != maziaoDubbingStyle {
+                cancelRendering()
+                synchronize(cues: latestSourceCues)
+            }
+        }
+    }
+    var usesMaziaoParagraphs: Bool { speechProvider == .maziao && maziaoDubbingStyle == .paragraphs }
+    private var cacheModelIdentifier: String {
+        usesMaziaoParagraphs ? "msm-context-v1|" + selectedModelIdentifier : selectedModelIdentifier
+    }
+    private var latestSourceCues: [SRTSegment] = []
+    private var previousContextUnits: [SRTSegment] = []
+    private var previousContextConfiguration: String?
 
     @Published var languageIdentifier: String {
         didSet {
@@ -100,6 +118,7 @@ final class DubbingSessionModel: ObservableObject {
         static let duckOriginal = "msm.dubbing.duckOriginal"
         static let playbackRates = "msm.dubbing.playbackRates"
         static let maziaoConcurrentBatches = "msm.dubbing.maziaoConcurrentBatches"
+        static let maziaoDubbingStyle = "msm.dubbing.maziaoDubbingStyle"
     }
 
     private let defaults: UserDefaults
@@ -167,6 +186,7 @@ final class DubbingSessionModel: ObservableObject {
         maziaoVoiceIdentifier = defaults.string(forKey: Keys.maziaoVoice) ?? ""
         maziaoConcurrentBatches = defaults.object(forKey: Keys.maziaoConcurrentBatches) == nil
             ? 2 : min(2, max(1, defaults.integer(forKey: Keys.maziaoConcurrentBatches)))
+        maziaoDubbingStyle = MaziaoDubbingStyle(rawValue: defaults.string(forKey: Keys.maziaoDubbingStyle) ?? "") ?? .paragraphs
 
         let savedLanguage = defaults.string(forKey: Keys.language) ?? "vi-VN"
         languageIdentifier = savedLanguage
@@ -190,7 +210,7 @@ final class DubbingSessionModel: ObservableObject {
     func qualityRepairCacheSnapshot() -> DubbingQualityRepairCacheSnapshot {
         DubbingQualityRepairCacheSnapshot(cache: cache, language: languageIdentifier,
             voice: selectedVoiceIdentifier, rate: speechRate, provider: speechProvider,
-            model: selectedModelIdentifier, playbackRates: playbackRateByFingerprint)
+            model: cacheModelIdentifier, playbackRates: playbackRateByFingerprint)
     }
 
     func preserveQualityRepairRates(_ rates: [String: Double]) {
@@ -204,13 +224,25 @@ final class DubbingSessionModel: ObservableObject {
 
     func synchronize(cues: [SRTSegment]) {
         guard AppFeatureFlags.dubbingEnabled else { return }
+        latestSourceCues = cues
+        let source = cues
+        let cues = usesMaziaoParagraphs
+            ? ((try? MaziaoContextPlanner.groups(source, language: languageIdentifier))?.map(\.cue) ?? []) : source
+        plannedDubbingCount = cues.count
+        shortParagraphCount = usesMaziaoParagraphs ? cues.filter { $0.text.count < MaziaoContextPlanner.minimumContextCharacters }.count : 0
+        let signature = [cacheModelIdentifier, languageIdentifier, selectedVoiceIdentifier ?? "", String(speechRate), speechProvider.rawValue].joined(separator: "\u{001F}")
+        let previousUnits = usesMaziaoParagraphs && previousContextConfiguration == signature ? previousContextUnits : []
+        previousContextUnits = usesMaziaoParagraphs ? cues : []
+        previousContextConfiguration = usesMaziaoParagraphs ? signature : nil
+        let migration = qualityRepairCacheSnapshot()
+        let aliasPlan = previousUnits.isEmpty ? [] : MaziaoContextPlanner.cachePreservation(previous: previousUnits, updated: cues)
         let cueIDs = Set(cues.map(\.id))
         var current = renderedByCueID.filter { cueIDs.contains($0.key) }
 
         cacheLoadTask?.cancel()
         let language = languageIdentifier
         let provider = speechProvider
-        let model = selectedModelIdentifier
+        let model = cacheModelIdentifier
         let voice = selectedVoiceIdentifier
         let rate = speechRate
         let fingerprints = Dictionary(uniqueKeysWithValues: cues.map { cue in
@@ -238,6 +270,17 @@ final class DubbingSessionModel: ObservableObject {
         renderedByCueID = current
         cacheLoadTask = Task { [weak self] in
             guard let self else { return }
+            if !previousUnits.isEmpty {
+                let worker = Task.detached(priority: .utility) {
+                    try migration.preserveClips(previous: previousUnits, planned: aliasPlan)
+                }
+                do {
+                    try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                    guard !Task.isCancelled, self.activeFingerprintByCueID == fingerprints else { return }
+                    self.preserveQualityRepairRates(migration.preservedRates(previous: previousUnits, planned: aliasPlan))
+                } catch is CancellationError { return }
+                catch { /* Existing explicit cache/rate choices win over a conflicting alias. */ }
+            }
             var loaded = self.renderedByCueID
             for cue in cues {
                 guard !Task.isCancelled else { return }
@@ -285,6 +328,9 @@ final class DubbingSessionModel: ObservableObject {
         updatedCues: [SRTSegment],
         mergedSourceIDs: Set<Int>
     ) {
+        // Paragraph audio already contains the complete text. The next normal
+        // synchronize projects the new SUB layout and reuses unchanged group speech.
+        if usesMaziaoParagraphs { return }
         guard AppFeatureFlags.dubbingEnabled,
               let plan = DubbingMergePreservationPlan.make(
                 previousCues: previousCues,
@@ -544,6 +590,10 @@ final class DubbingSessionModel: ObservableObject {
         guard !selected.isEmpty else { return }
         playback.stopAll(restoreOriginalVolume: originalVolume)
         for cue in selected {
+            if usesMaziaoParagraphs, let unit = previousContextUnits.first(where: { $0.id == cue.id }) {
+                try? cache.blockReuse(for: paragraphDeletionKey(unit, language: languageIdentifier,
+                    voice: selectedVoiceIdentifier, rate: speechRate, model: cacheModelIdentifier))
+            }
             try? cache.blockReuse(for: cue.fingerprint)
             cache.removeClip(for: cue.fingerprint)
             playbackRateByFingerprint.removeValue(forKey: cue.fingerprint)
@@ -671,6 +721,8 @@ final class DubbingSessionModel: ObservableObject {
 
     private func cachedClip(cue: SRTSegment, language: String, voice: String?, rate: Float,
                             provider: DubbingSpeechProvider, model: String) -> URL? {
+        if provider == .maziao, model.hasPrefix("msm-context-v1|"),
+           !cache.allowsReuse(for: paragraphDeletionKey(cue, language: language, voice: voice, rate: rate, model: model)) { return nil }
         let fingerprint = DubbingFingerprint.make(cue: cue, localeIdentifier: language,
             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
         if let existing = cache.existingClipURL(for: fingerprint) { return existing }
@@ -694,8 +746,28 @@ final class DubbingSessionModel: ObservableObject {
         return try? cache.reuseSpeech(content: content, fingerprint: fingerprint)
     }
 
+    private func paragraphDeletionKey(_ cue: SRTSegment, language: String, voice: String?, rate: Float, model: String) -> String {
+        // A deletion intent follows the same paragraph through renumbering. This
+        // does not bind the reusable audio cache identity to subtitle timestamps.
+        let scoped = SRTSegment(id: 0, index: 0, timing: cue.timing, startSeconds: cue.startSeconds,
+            endSeconds: cue.endSeconds, text: cue.text)
+        return DubbingFingerprint.make(cue: scoped, localeIdentifier: language, voiceIdentifier: voice,
+            rate: rate, provider: .maziao,
+            modelIdentifier: model + "|delete|\(cue.startSeconds)|\(cue.endSeconds)")
+    }
+
     private func startRendering(_ cues: [SRTSegment], allCues: [SRTSegment]) {
         guard !cues.isEmpty, !isRendering else { return }
+        let sourceSelection = Set(cues.map(\.id))
+        let cues: [SRTSegment]
+        do {
+            if usesMaziaoParagraphs {
+                cues = try MaziaoContextPlanner.groups(allCues, language: languageIdentifier)
+                    .filter { !$0.sourceIDs.isDisjoint(with: sourceSelection) }.map(\.cue)
+            } else { cues = allCues.filter { sourceSelection.contains($0.id) } }
+        } catch { errorMessage = error.localizedDescription; return }
+        guard !cues.isEmpty else { return }
+        synchronize(cues: allCues)
         renderTask?.cancel()
         cacheLoadTask?.cancel()
         let generation = UUID()
@@ -708,7 +780,8 @@ final class DubbingSessionModel: ObservableObject {
 
         let language = languageIdentifier
         let provider = speechProvider
-        let model = selectedModelIdentifier
+        let model = cacheModelIdentifier
+        let providerModel = selectedModelIdentifier
         let voice = selectedVoiceIdentifier
         let rate = speechRate
         let providerService = selectedSpeechService
@@ -716,7 +789,14 @@ final class DubbingSessionModel: ObservableObject {
         renderTask = Task { [weak self] in
             guard let self else { return }
             do {
+                try Task.checkCancellation()
                 try self.cache.prepare()
+                if provider == .maziao, model.hasPrefix("msm-context-v1|") {
+                    for cue in cues {
+                        try self.cache.clearReuseBlock(for: self.paragraphDeletionKey(cue, language: language,
+                            voice: voice, rate: rate, model: model))
+                    }
+                }
                 // Resolve migration/reuse before forming paid requests.
                 for cue in cues {
                     _ = self.cachedClip(cue: cue, language: language, voice: voice, rate: rate,
@@ -735,7 +815,7 @@ final class DubbingSessionModel: ObservableObject {
                         return DubbingSpeechRequest(cueID: cue.id,
                             text: cue.text.replacingOccurrences(of: "\n", with: " "),
                             localeIdentifier: language, voiceIdentifier: voice, rate: rate,
-                            outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: model)
+                            outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: providerModel)
                     }
                     let batches = try await batchService.renderBatches(for: pending)
                     if provider == .maziao { maziaoBatches = batches }
@@ -790,7 +870,7 @@ final class DubbingSessionModel: ObservableObject {
                             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
                         try await providerService.render(.init(cueID: cue.id, text: DubbingFingerprint.spokenText(cue.text),
                             localeIdentifier: language, voiceIdentifier: voice, rate: rate,
-                            outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: model))
+                            outputURL: self.cache.clipURL(for: fingerprint), provider: provider, modelIdentifier: providerModel))
                         try Task.checkCancellation()
                         guard let url = self.cache.existingClipURL(for: fingerprint) else {
                             throw DubbingError.invalidAudioBuffer
@@ -867,7 +947,7 @@ final class DubbingSessionModel: ObservableObject {
                                     rate: rate,
                                     outputURL: outputURL,
                                     provider: provider,
-                                    modelIdentifier: model
+                                    modelIdentifier: providerModel
                                 )
                             )
                         }
@@ -902,9 +982,9 @@ final class DubbingSessionModel: ObservableObject {
                 guard self.renderGeneration == generation else { throw CancellationError() }
                 self.renderTask = nil
                 self.renderingCueIDs.removeAll()
-                self.statusMessage = L10n.format("Đã tạo giọng cho %d cue.", cues.count)
+                self.statusMessage = L10n.format(self.usesMaziaoParagraphs ? "Đã tạo giọng cho %d đoạn liền mạch." : "Đã tạo giọng cho %d cue.", cues.count)
                 self.refreshCacheUsage()
-                self.synchronize(cues: allCues)
+                self.synchronize(cues: self.latestSourceCues)
                 if self.permitsUsageRefresh && provider == .elevenLabs {
                     _ = try? await ElevenLabsQuotaService.refresh()
                 } else if self.permitsUsageRefresh && provider == .maziao {

@@ -61,7 +61,9 @@ Vị trí lưu trong style của dự án, không đổi chữ, timing hoặc ng
 
 DUB mặc định đổi tốc độ phát để giữ đủ audio trong span SUB, không tạo giọng lại qua API. Kéo mép phải DUB để chỉnh độ dài riêng. Double-click mép về1×; bấm phải → **Khớp độ dài sub** để canh tự động lại. Tốc độ đã chỉnh thủ công được giữ khi đổi timing SUB. Cue quá nhanh/chậm được đánh dấu để xem lại; app không cắt chữ để giả vừa cue. SUB có timing chồng thì cần sửa timing trước.
 
-Maziao gửi theo nhóm, hiện tối đa2 nhóm đồng thời; tải/chuyển mã trên máy vẫn tối đa2. Nếu tài khoản báo giới hạn đồng thời, vào Cài đặt → Lồng tiếng → Maziao chọn1 nhóm, rồi bấm tạo lại để phục hồi receipt. Tốc độ còn phụ thuộc hàng đợi/model bên Maziao. Xem [thực thi lồng tiếng và kiểm tra API](dubbing.md).
+Maziao mặc định **Đoạn liền mạch** để gom các cue gần nhau thành đoạn có ngữ cảnh. Một khối DUB phủ nhiều cue SUB; SUB giữ nguyên. **Lồng cue chọn** tạo nguyên đoạn chứa cue đó, gồm các cue liền kề. DUB tự khớp tổng thời gian đoạn, có thể kéo độ dài riêng; mốc lời bên trong có thể lệch từng cue SUB nên cần nghe/xem lại. App không chạy thêm nhận diện audio. Cài đặt → Lồng tiếng → Maziao có **Từng cue** để chọn cách cũ. Đoạn tách bởi khoảng nghỉ dài có thể vẫn quá ngắn; app báo và không thêm chữ hoặc nối qua khoảng nghỉ để giả tăng ngữ cảnh.
+
+Maziao vẫn tối đa2 nhóm API đồng thời; tải/chuyển mã trên máy tối đa2. Nếu tài khoản báo giới hạn đồng thời, chọn1 nhóm rồi bấm tạo lại để phục hồi receipt. Cache hai cách tạo được tách riêng, bản cũ không bị xóa. Tốc độ và chất giọng còn phụ thuộc hàng đợi/model/giọng bên Maziao. Xem [thực thi lồng tiếng và kiểm tra API](dubbing.md).
 
 ## Xuất kết quả
 

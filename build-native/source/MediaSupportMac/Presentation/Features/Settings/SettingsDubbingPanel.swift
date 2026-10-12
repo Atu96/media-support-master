@@ -169,6 +169,14 @@ struct SettingsDubbingPanel: View {
 
             maziaoUsageCard
 
+            DubbingSettingsLabeledRow("Cách tạo giọng Maziao") {
+                Picker("Cách tạo giọng Maziao", selection: $session.maziaoDubbingStyle) {
+                    ForEach(MaziaoDubbingStyle.allCases) { Text(L10n.string($0.label)).tag($0) }
+                }.pickerStyle(.segmented).labelsHidden().frame(maxWidth: 260)
+                    .disabled(session.isRendering)
+            }
+            Text("Đoạn liền mạch gom cue gần nhau để giọng có ngữ cảnh; một khối DUB phủ nhiều cue SUB và vẫn kéo chỉnh riêng. Không nhận diện audio thêm. Từng cue giữ cách cũ.")
+                .font(AppFont.caption).foregroundStyle(AppTheme.mutedText).fixedSize(horizontal: false, vertical: true)
             DubbingSettingsLabeledRow("Tác vụ Maziao cùng lúc") {
                 Picker("Tác vụ Maziao cùng lúc", selection: $session.maziaoConcurrentBatches) {
                     Text(L10n.string("1 nhóm")).tag(1)

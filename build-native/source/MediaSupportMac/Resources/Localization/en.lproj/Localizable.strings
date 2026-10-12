@@ -748,3 +748,14 @@
 "Chưa tải model Whisper Offline trong Cài đặt." = "The Whisper Offline model has not been downloaded in Settings.";
 "Bản hiện có: %@ · Bản bổ trợ: %@" = "Current: %@ · Additional: %@";
 "Khớp lại từ âm thanh" = "Align again using audio";
+"Cách tạo giọng Maziao" = "Maziao generation style";
+"Đoạn liền mạch" = "Connected paragraphs";
+"Từng cue" = "Each cue";
+"Đoạn liền mạch gom cue gần nhau để giọng có ngữ cảnh; một khối DUB phủ nhiều cue SUB và vẫn kéo chỉnh riêng. Không nhận diện audio thêm. Từng cue giữ cách cũ." = "Connected paragraphs group nearby cues for more context. One DUB block covers several SUB cues and can be adjusted separately. No extra audio recognition. Each cue keeps the previous method.";
+"%d / %d đoạn đã có giọng" = "%d / %d paragraphs voiced";
+"DUB theo đoạn; SUB giữ từng cue. Lồng cue chọn sẽ tạo cả đoạn chứa cue đó, gồm các cue liền kề." = "DUB uses paragraphs; SUB keeps individual cues. Dubbing a selected cue generates its full paragraph, including adjacent cues.";
+"%d đoạn còn rất ngắn vì khoảng nghỉ; giọng có thể chưa ổn định. App không thêm chữ hoặc ghép qua khoảng nghỉ dài." = "%d paragraphs remain very short due to pauses; voice may be inconsistent. No words are added and long pauses are not bridged.";
+"Tạo trọn đoạn chứa các cue đã chọn, gồm các cue liền kề trong đoạn." = "Generate the full paragraph containing selected cues, including adjacent cues in that paragraph.";
+"Đã tạo giọng cho %d đoạn liền mạch." = "Generated voice for %d connected paragraphs.";
+"Không thể gom đoạn: phụ đề có cue rỗng, ID trùng hoặc thời gian chồng/sai. Hãy sửa QC trước." = "Cannot group paragraphs: cues are empty, IDs are duplicated, or times overlap/are invalid. Fix QC first.";
+"Phụ đề quá lớn để gom đoạn trong một lượt. Hãy chia nội dung thành các phần ngắn hơn." = "Subtitles are too large to group in one run. Split the content into shorter parts.";

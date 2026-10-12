@@ -685,7 +685,7 @@ struct SubtitleTimelineWorkspace: View {
                         "waveform.badge.plus",
                         title: "Lồng cue chọn",
                         active: canRenderSelectedDubbing,
-                        help: "Tạo giọng cho các cue phụ đề đang chọn"
+                        help: dubbingSession.usesMaziaoParagraphs ? "Tạo trọn đoạn chứa các cue đã chọn, gồm các cue liền kề trong đoạn." : "Tạo giọng cho các cue phụ đề đang chọn"
                     ) {
                         rightPanelMode = .dubbing
                         dubbingSession.renderSelected(cues: viewModel.segments, selectedIDs: selectedIDs)

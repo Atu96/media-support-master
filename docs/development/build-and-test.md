@@ -2,6 +2,10 @@
 
 ## Subtitle comparison and original text priority
 
+The paragraph DUB smoke also reports `latestTiming=kept`: editing SUB timing while generation is in progress must use the latest timeline projection at completion. Inspect the focused hook's markers together with the full offline gate; it does not certify every UI click.
+
+The no-key `MSM_DUBBING_OPTIMIZATION_SMOKE_DIR` hook also expects `MAZIAO_CONTEXT_SMOKE_OK`: selected SUB cue expands to its full paragraph, SUB is unchanged, provider model IDs remain unmodified, cache/rates survive renumbering, deletion stays silent across renumbering and cancellation drains. Core fixtures cover context budgets/Unicode/gaps/QC rejection/cache scope. For a separate user-authorized paid contrast test, both `MSM_ALLOW_PAID_MAZIAO_PROBE=1` and `MSM_MAZIAO_CONTEXT_PROBE_DIR=<fresh temp directory>` are required; it uses at most500 fixed sample characters total, the configured Maziao voice/model and two tasks (one paragraph/four short parts). Samples are exported at1× for listening and file validation is not a quality judgment. It requires readable Keychain credentials; failure before credential load sends no TTS request. Do not enable this paid hook during build/offline QA.
+
 Core fixtures cover explicit time-group choices, missing/one-to-many cues, invalid times, stable IDs and conservative existing-cue script mapping across five languages. For the packaged no-key fake-session check, set `MSM_SUBTITLE_COMPARISON_SMOKE_DIR` to a fresh temporary directory and run the TEST bundle's `Contents/MacOS/MediaSupportMac`. Expected marker: `COMPARISON_SMOKE_OK` with private staging, explicit choice, Undo, cancellation/stale preservation, one-time/suppressible offers and script text/timing preservation. Release ignores this hook. It does not initialize the app UI, touch personal projects, read Keychain or call cloud services. The native OCR and API service contracts have their separate gates; UI clicks and real-media accuracy require focused review. See [workflow](subtitle-comparison.md).
 
 ## Requirements

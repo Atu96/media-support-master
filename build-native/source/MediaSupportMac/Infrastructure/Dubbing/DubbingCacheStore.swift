@@ -148,6 +148,10 @@ struct DubbingCacheStore: Sendable {
     func allowsReuse(for fingerprint: String) -> Bool {
         !FileManager.default.fileExists(atPath: blockedReuseURL(fingerprint).path)
     }
+    func clearReuseBlock(for fingerprint: String) throws {
+        let url = blockedReuseURL(fingerprint)
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
 
     /// Explicit delete must not immediately resurrect the clip from a reuse alias.
     func blockReuse(for fingerprint: String) throws {
