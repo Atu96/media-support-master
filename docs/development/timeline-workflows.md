@@ -82,9 +82,9 @@ Xuất video phụ đề/lồng tiếng vẫn ở **Cài đặt xuất** trên t
 ## Đã kiểm tra và phần còn cần thử
 
 Đợt sửa QC/vị trí/OCR đã qua90 kiểm tra core,24 đối chiếu XML, bộ native và các locale giao diện. Có clip mẫu kiểm vị trí một/hai dòng và fixture OCR5 ngôn ngữ. Việc đổi nhãn cuối cùng chỉ thay giao diện, được kiểm localization và build/startup app TEST; không chạy lại API. Chưa có corpus video người dùng lớn, kiểm mọi OS cũ hoặc chứng nhận từng thao tác menu bằng UI tự động. Quy trình ở [build và test](build-and-test.md).
-## Timeline markers and notes
 
-Use **Markers → Add marker at playhead** or press **M** to mark a position, even before transcription. Click a marker to seek there; double-click it to edit a note such as “revise translation”, “review subtitles” or “check voice”. Press M again at the same paused position to open its note. Right-click a marker to edit/delete it, or use the Markers menu to find existing notes. The M shortcut can be reassigned in Timeline Shortcuts and does not intercept typing in an editor.
+## Đánh dấu và ghi chú
 
-Markers are saved with the project and restored when that media is reopened. They are annotations: subtitle/dubbing cues, timing, audio and export contents do not change. Notes are stored locally as text/time metadata; no OCR, audio decode or API call is needed. Existing projects without a marker field remain readable. Saving a note uses an atomic metadata update; write failures keep the editor open.
+Dùng **Đánh dấu → Thêm đánh dấu tại đầu phát** hoặc nhấn **M**, kể cả khi chưa chép lời. Bấm một lần marker để tua đến vị trí đó; bấm đúp để ghi việc cần làm, như “dịch lại”, “rà phụ đề” hoặc “kiểm tra giọng”. Nhấn M lần nữa tại cùng vị trí đang dừng sẽ mở ghi chú. Bấm chuột phải marker để sửa/xóa, hoặc mở danh sách trong menu Đánh dấu. Có thể đổi phím M trong Phím tắt Timeline; khi đang gõ văn bản, phím vẫn thuộc trình soạn thảo.
 
+Marker lưu theo dự án và phục hồi khi mở lại video/audio. Đây là ghi chú độc lập: không đổi chữ, thời gian SUB/DUB, audio, Undo cue hoặc nội dung xuất. Chỉ lưu metadata chữ/thời gian tại máy, không OCR, giải mã audio hay gọi API. Dự án cũ chưa có field marker vẫn đọc được. Lưu ghi chú ghi metadata nguyên tử; lỗi quyền ghi giữ ô sửa mở và thông báo lỗi.
