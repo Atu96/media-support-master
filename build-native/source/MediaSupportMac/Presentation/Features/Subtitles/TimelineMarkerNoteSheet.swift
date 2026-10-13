@@ -11,7 +11,7 @@ struct TimelineMarkerNoteSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Ghi chú đánh dấu", systemImage: "bookmark.fill")
+            Label("Ghi chú đánh dấu", systemImage: "flag.fill")
                 .font(AppFont.sectionTitle)
                 .foregroundStyle(AppTheme.headlineText)
             Text(SRTTimecode.format(marker.seconds))

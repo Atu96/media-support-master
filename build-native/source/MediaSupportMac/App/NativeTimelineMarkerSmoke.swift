@@ -1,6 +1,9 @@
 import Foundation
+import SwiftUI
+import AppKit
 
-/// TEST-only pure manifest contract; no preferences, project store, media or API.
+/// TEST-only manifest contract and optional flag previews; no project store, media or API.
+@MainActor
 enum NativeTimelineMarkerSmoke {
     static func run() throws {
         func check(_ value: Bool) throws { if !value { throw DubbingError.invalidAudioBuffer } }
@@ -25,6 +28,29 @@ enum NativeTimelineMarkerSmoke {
         removed.markers = []
         let cleared = try JSONDecoder().decode(ProjectBackupManifest.self, from: JSONEncoder().encode(removed))
         try check(cleared.markers?.isEmpty == true && cleared.completionSummary == old.completionSummary)
+        if let directory = ProcessInfo.processInfo.environment["MSM_TIMELINE_MARKER_PREVIEW_DIR"] {
+            let root = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            for dark in [true, false] {
+                let content = ZStack(alignment: .topLeading) {
+                    (dark ? Color(white: 0.14) : Color(white: 0.94))
+                    Rectangle().fill(Color.red).frame(width: 1.5, height: 48).offset(x: 96)
+                    TimelineMarkerFlag(poleX: 0.75)
+                    TimelineMarkerFlag().offset(x: 84)
+                    TimelineMarkerFlag(poleX: 23.25).offset(x: 168)
+                }
+                .frame(width: 192, height: 48)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                let renderer = ImageRenderer(content: content)
+                renderer.scale = 3
+                guard let data = renderer.nsImage?.tiffRepresentation,
+                      let bitmap = NSBitmapImageRep(data: data),
+                      let png = bitmap.representation(using: .png, properties: [:]) else {
+                    throw DubbingError.invalidAudioBuffer
+                }
+                try png.write(to: root.appendingPathComponent(dark ? "marker-flag-dark.png" : "marker-flag-light.png"))
+            }
+        }
         print("TIMELINE_MARKER_SMOKE_OK oldManifest=compatible note=Unicode preservedProjectFields=true delete=retained noKey=true noAPI=true")
     }
 }

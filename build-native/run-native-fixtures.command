@@ -28,7 +28,7 @@ grep -q '^DUBBING_SMOKE_OK ' "$LOG" || fail "Dubbing fixture did not complete."
 grep -q '^MAZIAO_CONTEXT_SMOKE_OK ' "$LOG" || fail "Maziao context fixture did not complete."
 cat "$LOG"
 LOG="$WORK_DIR/qa-latest/native-markers.log"
-env -u MSM_ALLOW_PAID_MAZIAO_PROBE MSM_TIMELINE_MARKER_SMOKE=1 "$APP/Contents/MacOS/$BINARY_NAME" > "$LOG" 2>&1
+env -u MSM_ALLOW_PAID_MAZIAO_PROBE MSM_TIMELINE_MARKER_SMOKE=1 MSM_TIMELINE_MARKER_PREVIEW_DIR="$WORK_DIR/qa-latest" "$APP/Contents/MacOS/$BINARY_NAME" > "$LOG" 2>&1
 grep -q '^TIMELINE_MARKER_SMOKE_OK ' "$LOG" || fail "Marker manifest fixture did not complete."
 cat "$LOG"
 ok "Native fixtures passed; disposable bundle removed on exit."

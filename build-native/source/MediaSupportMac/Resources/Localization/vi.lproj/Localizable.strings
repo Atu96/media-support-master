@@ -772,7 +772,7 @@
 "Đánh dấu" = "Đánh dấu";
 "Ghi chú đánh dấu" = "Ghi chú đánh dấu";
 "Thêm đánh dấu tại đầu phát · M" = "Thêm đánh dấu tại đầu phát · M";
-"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú.";
+"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú.";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng.";
 "Chưa có ghi chú" = "Chưa có ghi chú";
 "Xóa đánh dấu" = "Xóa đánh dấu";
@@ -780,3 +780,4 @@
 "Sửa ghi chú" = "Sửa ghi chú";
 "Thêm đánh dấu" = "Thêm đánh dấu";
 "Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án.";
+"Đi tới vị trí đánh dấu" = "Đi tới vị trí đánh dấu";

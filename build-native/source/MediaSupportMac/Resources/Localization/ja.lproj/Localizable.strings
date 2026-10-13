@@ -754,7 +754,7 @@
 "Đánh dấu" = "マーカー";
 "Ghi chú đánh dấu" = "マーカーのメモ";
 "Thêm đánh dấu tại đầu phát · M" = "再生ヘッドにマーカーを追加 · M";
-"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M：再生ヘッドにマーカーを追加。ダブルクリックでメモを編集。";
+"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M：再生ヘッドにマーカーを追加。旗をクリックするとメモが開きます。";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "この位置で必要な作業をメモします。例：翻訳の修正、字幕の確認、音声の確認。";
 "Chưa có ghi chú" = "メモなし";
 "Xóa đánh dấu" = "マーカーを削除";
@@ -762,3 +762,4 @@
 "Sửa ghi chú" = "メモを編集";
 "Thêm đánh dấu" = "マーカーを追加";
 "Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "メモを保存できません。プロジェクトフォルダへの書き込み権限を確認してください。";
+"Đi tới vị trí đánh dấu" = "マーカーの位置へ移動";

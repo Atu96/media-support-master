@@ -772,7 +772,7 @@
 "Đánh dấu" = "Markers";
 "Ghi chú đánh dấu" = "Marker note";
 "Thêm đánh dấu tại đầu phát · M" = "Add marker at playhead · M";
-"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M: add a marker at the playhead. Double-click a marker to edit its note.";
+"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M: add a marker at the playhead. Click its flag to open the note.";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "Note what needs attention here, such as revising a translation, reviewing subtitles or checking a voice.";
 "Chưa có ghi chú" = "No note yet";
 "Xóa đánh dấu" = "Delete marker";
@@ -780,3 +780,4 @@
 "Sửa ghi chú" = "Edit note";
 "Thêm đánh dấu" = "Add marker";
 "Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "Could not save the note. Check write access to the project folder.";
+"Đi tới vị trí đánh dấu" = "Go to marker";

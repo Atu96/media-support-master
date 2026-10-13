@@ -746,6 +746,7 @@ struct SubtitleTimelineWorkspace: View {
             }
             toolbarDivider
             HStack(spacing: AppTheme.controlGap) {
+                timelineMarkerMenu
                 timelineToolButton("arrow.uturn.backward", title: "Hoàn tác", active: false, help: "Hoàn tác") { viewModel.undoEdit() }.disabled(!viewModel.canUndoEdit)
                 timelineToolButton("arrow.uturn.forward", title: "Làm lại", active: false, help: "Làm lại") { viewModel.redoEdit() }.disabled(!viewModel.canRedoEdit)
                 timelineCueEditButton("arrow.left.to.line.compact", title: "Xóa trái", help: "Bỏ phần bên trái tại Skim hoặc playhead", width: 72) { deleteSelectedLeftSide() }.disabled(!canDeleteSelectedCueSide)
@@ -758,7 +759,6 @@ struct SubtitleTimelineWorkspace: View {
             }
             toolbarDivider
             subtitleExportMenu
-            timelineMarkerMenu
             Spacer(minLength: 10)
         }
         .padding(.horizontal, 10)
@@ -771,7 +771,7 @@ struct SubtitleTimelineWorkspace: View {
 
     private var timelineMarkerMenu: some View {
         Menu {
-            Button("Thêm đánh dấu tại đầu phát · M", systemImage: "bookmark.fill") { addMarkerAtPlayhead() }
+            Button("Thêm đánh dấu tại đầu phát · M", systemImage: "flag.fill") { addMarkerAtPlayhead() }
             if !viewModel.timelineMarkers.isEmpty {
                 Divider()
                 ForEach(viewModel.timelineMarkers) { marker in
@@ -779,12 +779,12 @@ struct SubtitleTimelineWorkspace: View {
                 }
             }
         } label: {
-            Label("Đánh dấu", systemImage: "bookmark")
+            Label("Đánh dấu", systemImage: "flag")
                 .font(AppFont.editorLabel).padding(.horizontal, 9).frame(height: 28)
         }
         .menuStyle(.borderlessButton).fixedSize()
         .disabled(viewModel.mediaURL == nil)
-        .help("M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú.")
+        .help("M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú.")
     }
 
     private func markerLabel(_ marker: TimelineMarker) -> String {
@@ -1183,28 +1183,6 @@ struct SubtitleTimelineWorkspace: View {
             TimelineRuler(duration: duration, pixelsPerSecond: pixelsPerSecond, width: width)
                 .equatable().contentShape(Rectangle()).gesture(timelinePointerDrag)
 
-            ForEach(viewModel.timelineMarkers) { marker in
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.accentOrange)
-                    .frame(width: 18, height: 22).contentShape(Rectangle())
-                    .gesture(TapGesture(count: 2).exclusively(before: TapGesture(count: 1)).onEnded { result in
-                        switch result {
-                        case .first: editingMarker = marker
-                        case .second: hasCommittedPlayhead = true; seek(marker.seconds)
-                        }
-                    })
-                    .contextMenu {
-                        Button("Sửa ghi chú") { editingMarker = marker }
-                        Button("Xóa đánh dấu", role: .destructive) { _ = viewModel.removeTimelineMarker(marker.id) }
-                    }
-                    .help(markerLabel(marker))
-                    .accessibilityLabel(markerLabel(marker))
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityAction { editingMarker = marker }
-                    .offset(x: min(width - 18, max(0, CGFloat(marker.seconds * pixelsPerSecond) - 9)), y: 9)
-            }
-
             SubtitleTimelineCueLane(
                 segments: viewModel.segments,
                 pixelsPerSecond: pixelsPerSecond,
@@ -1295,6 +1273,25 @@ struct SubtitleTimelineWorkspace: View {
                 Rectangle().fill(AppTheme.timelineClickMarker).frame(width: 1.5, height: max(1, totalHeight - 17))
                     .offset(x: min(width - 1.5, max(0, CGFloat(marker * pixelsPerSecond))), y: 17)
                     .allowsHitTesting(false)
+            }
+            // Flags stay above the playhead drag target so their click opens notes.
+            ForEach(viewModel.timelineMarkers) { marker in
+                let timeX = min(width, max(0, CGFloat(marker.seconds * pixelsPerSecond)))
+                let originX = min(width - 24, max(0, timeX - 12))
+                Button { editingMarker = marker } label: {
+                    TimelineMarkerFlag(poleX: timeX - originX)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 32)
+                .contextMenu {
+                    Button("Đi tới vị trí đánh dấu") { hasCommittedPlayhead = true; seek(marker.seconds) }
+                    Button("Sửa ghi chú") { editingMarker = marker }
+                    Button("Xóa đánh dấu", role: .destructive) { _ = viewModel.removeTimelineMarker(marker.id) }
+                }
+                .help(markerLabel(marker))
+                .accessibilityLabel(markerLabel(marker))
+                .offset(x: originX, y: 0)
             }
         }
         .background(AppTheme.timelineCanvasFill)
