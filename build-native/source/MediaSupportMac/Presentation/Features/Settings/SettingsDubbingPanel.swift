@@ -8,12 +8,12 @@ struct SettingsDubbingPanel: View {
     @State private var maziaoKeyDraft = ""
     @State private var feedback = ""
     @State private var googleUsage = ProviderUsageStore.googleLocalUsage()
-    @State private var elevenQuota = ProviderUsageStore.elevenLabsSnapshot()
-    @State private var isRefreshingElevenQuota = false
-    @State private var elevenQuotaError = ""
-    @State private var maziaoAccount = ProviderUsageStore.maziaoSnapshot()
-    @State private var isRefreshingMaziao = false
-    @State private var maziaoError = ""
+    private var elevenQuota: ElevenLabsQuotaSnapshot? { session.providers.elevenQuota }
+    private var isRefreshingElevenQuota: Bool { session.providers.isRefreshingElevenQuota }
+    private var elevenQuotaError: String { session.providers.elevenQuotaError }
+    private var maziaoAccount: MaziaoAccountSnapshot? { session.providers.maziaoAccount }
+    private var isRefreshingMaziao: Bool { session.isRefreshingMaziaoVoices || session.providers.isRefreshingMaziaoAccount }
+    private var maziaoError: String { session.providers.maziaoAccountError.isEmpty ? session.maziaoVoiceCatalogError : session.providers.maziaoAccountError }
 
     var body: some View {
         ScrollView {
@@ -645,8 +645,7 @@ struct SettingsDubbingPanel: View {
     private func saveGoogleKey() async {
         let key = googleKeyDraft
         do {
-            try await DubbingCredentialAccess.shared.saveGoogle(key)
-            session.setCredentialAvailability(true, for: .googleCloud)
+            try await session.saveCredential(key, provider: .googleCloud)
             googleKeyDraft = ""
             feedback = "Đã lưu Google API key trong Keychain."
             googleUsage = ProviderUsageStore.googleLocalUsage()
@@ -657,8 +656,7 @@ struct SettingsDubbingPanel: View {
     @MainActor
     private func removeGoogleKey() async {
         do {
-            try await DubbingCredentialAccess.shared.deleteGoogle()
-            session.setCredentialAvailability(false, for: .googleCloud)
+            try await session.removeCredential(provider: .googleCloud)
             googleKeyDraft = ""
             feedback = "Đã xóa Google API key."
         } catch { feedback = error.localizedDescription }
@@ -668,11 +666,7 @@ struct SettingsDubbingPanel: View {
     private func saveElevenKey() async {
         let key = elevenKeyDraft
         do {
-            try await DubbingCredentialAccess.shared.saveElevenLabs(key)
-            session.setCredentialAvailability(true, for: .elevenLabs)
-            ProviderUsageStore.clearElevenLabs()
-            elevenQuota = nil
-            elevenQuotaError = ""
+            try await session.saveCredential(key, provider: .elevenLabs)
             elevenKeyDraft = ""
             feedback = "Đã lưu ElevenLabs API key trong Keychain."
             await session.refreshElevenVoiceCatalog()
@@ -683,11 +677,7 @@ struct SettingsDubbingPanel: View {
     @MainActor
     private func removeElevenKey() async {
         do {
-            try await DubbingCredentialAccess.shared.deleteElevenLabs()
-            session.setCredentialAvailability(false, for: .elevenLabs)
-            ProviderUsageStore.clearElevenLabs()
-            elevenQuota = nil
-            elevenQuotaError = ""
+            try await session.removeCredential(provider: .elevenLabs)
             elevenKeyDraft = ""
             feedback = "Đã xóa ElevenLabs API key."
         } catch { feedback = error.localizedDescription }
@@ -697,27 +687,17 @@ struct SettingsDubbingPanel: View {
     private func saveMaziaoKey() async {
         let key = maziaoKeyDraft
         do {
-            try await DubbingCredentialAccess.shared.saveMaziao(key)
-            session.setCredentialAvailability(true, for: .maziao)
-            ProviderUsageStore.clearMaziao()
-            maziaoAccount = nil
-            session.clearMaziaoVoiceCatalog()
-            maziaoError = ""
+            try await session.saveCredential(key, provider: .maziao)
             maziaoKeyDraft = ""
             feedback = "Đã lưu Maziao API key trong Keychain."
-            Task { await refreshMaziao() }
+            await refreshMaziao()
         } catch { feedback = error.localizedDescription }
     }
 
     @MainActor
     private func removeMaziaoKey() async {
         do {
-            try await DubbingCredentialAccess.shared.deleteMaziao()
-            session.setCredentialAvailability(false, for: .maziao)
-            ProviderUsageStore.clearMaziao()
-            maziaoAccount = nil
-            session.clearMaziaoVoiceCatalog()
-            maziaoError = ""
+            try await session.removeCredential(provider: .maziao)
             maziaoKeyDraft = ""
             session.maziaoVoiceIdentifier = ""
             feedback = "Đã xóa Maziao API key."
@@ -726,42 +706,14 @@ struct SettingsDubbingPanel: View {
 
     @MainActor
     private func refreshMaziao() async {
-        guard session.hasCredential(for: .maziao), !isRefreshingMaziao else { return }
-        isRefreshingMaziao = true
-        maziaoError = ""
-        defer { isRefreshingMaziao = false }
-        do {
-            async let account = MaziaoAPIClient.account()
-            await session.refreshMaziaoVoiceCatalog()
-            maziaoAccount = try await account
-            if !session.maziaoVoiceCatalogError.isEmpty {
-                maziaoError = session.maziaoVoiceCatalogError
-            }
-        } catch {
-            if let dubbingError = error as? DubbingError,
-               case .missingCredential = dubbingError {
-                session.setCredentialAvailability(false, for: .maziao)
-            }
-            maziaoError = error.localizedDescription
-        }
+        guard session.hasCredential(for: .maziao) else { return }
+        async let catalog: Void = session.refreshMaziaoVoiceCatalog()
+        await session.refreshProviderUsage(.maziao)
+        await catalog
     }
 
     @MainActor
-    private func refreshElevenQuota() async {
-        guard session.hasCredential(for: .elevenLabs), !isRefreshingElevenQuota else { return }
-        isRefreshingElevenQuota = true
-        elevenQuotaError = ""
-        defer { isRefreshingElevenQuota = false }
-        do {
-            elevenQuota = try await ElevenLabsQuotaService.refresh()
-        } catch {
-            if let dubbingError = error as? DubbingError,
-               case .missingCredential = dubbingError {
-                session.setCredentialAvailability(false, for: .elevenLabs)
-            }
-            elevenQuotaError = error.localizedDescription
-        }
-    }
+    private func refreshElevenQuota() async { await session.refreshProviderUsage(.elevenLabs) }
 
     private func formattedNumber(_ value: Int) -> String {
         NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)

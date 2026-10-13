@@ -1,19 +1,5 @@
 import Foundation
 
-struct ElevenLabsQuotaSnapshot: Codable, Equatable, Sendable {
-    let usedCharacters: Int
-    let characterLimit: Int
-    let nextReset: Date?
-    let tier: String
-    let updatedAt: Date
-
-    var remainingCharacters: Int { max(0, characterLimit - usedCharacters) }
-    var fractionUsed: Double {
-        guard characterLimit > 0 else { return 0 }
-        return min(1, max(0, Double(usedCharacters) / Double(characterLimit)))
-    }
-}
-
 struct GroqRateLimitSnapshot: Codable, Equatable, Sendable {
     let modelID: String?
     let requestLimit: Int?
@@ -198,7 +184,7 @@ enum ElevenLabsQuotaService {
         }
     }
 
-    static func refresh() async throws -> ElevenLabsQuotaSnapshot {
+    static func refresh(persistUsage: Bool = true) async throws -> ElevenLabsQuotaSnapshot {
         let key = await DubbingCredentialAccess.shared.loadElevenLabs()
         guard !key.isEmpty else { throw DubbingError.missingCredential("ElevenLabs") }
         guard let endpoint = URL(string: "https://api.elevenlabs.io/v1/user/subscription") else {
@@ -220,7 +206,7 @@ enum ElevenLabsQuotaService {
             tier: decoded.tier ?? "—",
             updatedAt: Date()
         )
-        ProviderUsageStore.saveElevenLabs(snapshot)
+        if persistUsage { ProviderUsageStore.saveElevenLabs(snapshot) }
         return snapshot
     }
 }

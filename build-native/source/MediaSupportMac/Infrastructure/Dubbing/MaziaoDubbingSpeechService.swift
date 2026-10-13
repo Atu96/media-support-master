@@ -1,10 +1,5 @@
 import Foundation
 
-struct MaziaoAccountSnapshot: Codable, Equatable, Sendable {
-    let remainingCredits: Int
-    let updatedAt: Date
-}
-
 @MainActor
 enum MaziaoAPIClient {
     static let journal = MaziaoTaskJournal()
@@ -61,6 +56,8 @@ enum MaziaoAPIClient {
     }()
 
     static func voices(language: String? = nil) async throws -> [MaziaoVoiceDescriptor] {
+        let key = await DubbingCredentialAccess.shared.loadMaziao()
+        guard !key.isEmpty else { throw DubbingError.missingCredential("Maziao") }
         let collected = try await MaziaoVoiceCatalogWorkflow.load { source, offset in
             var components = URLComponents(url: baseURL.appendingPathComponent(source.rawValue), resolvingAgainstBaseURL: false)!
             var items = [
@@ -71,7 +68,7 @@ enum MaziaoAPIClient {
                 items.append(URLQueryItem(name: "language", value: language))
             }
             components.queryItems = items
-            let data = try await send(method: "GET", url: components.url!, operation: .voices)
+            let data = try await send(method: "GET", url: components.url!, operation: .voices, credential: key)
             return try MaziaoResponseDecoder.voicePage(from: data)
         }
         if let language, !language.isEmpty {
@@ -86,13 +83,13 @@ enum MaziaoAPIClient {
         return try MaziaoResponseDecoder.voice(from: data)
     }
 
-    static func account() async throws -> MaziaoAccountSnapshot {
+    static func account(persistUsage: Bool = true) async throws -> MaziaoAccountSnapshot {
         let data = try await send(method: "GET", url: baseURL.appendingPathComponent("api/auth/me"), operation: .account)
         let snapshot = MaziaoAccountSnapshot(
             remainingCredits: try MaziaoResponseDecoder.remainingCredits(from: data),
             updatedAt: Date()
         )
-        ProviderUsageStore.saveMaziao(snapshot)
+        if persistUsage { ProviderUsageStore.saveMaziao(snapshot) }
         return snapshot
     }
 
@@ -271,8 +268,10 @@ enum MaziaoAPIClient {
         )
     }
 
-    private static func send(method: String, url: URL, operation: MaziaoAPIOperation, body: Data? = nil) async throws -> Data {
-        let key = await DubbingCredentialAccess.shared.loadMaziao()
+    private static func send(method: String, url: URL, operation: MaziaoAPIOperation, body: Data? = nil, credential: String? = nil) async throws -> Data {
+        let key: String
+        if let credential { key = credential }
+        else { key = await DubbingCredentialAccess.shared.loadMaziao() }
         guard !key.isEmpty else { throw DubbingError.missingCredential("Maziao") }
         var request = URLRequest(url: url)
         request.httpMethod = method

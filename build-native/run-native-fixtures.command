@@ -22,4 +22,9 @@ env -u MSM_ALLOW_PAID_MAZIAO_PROBE MSM_SUBTITLE_COMPARISON_SMOKE_DIR="$FIXTURE_R
 grep -q '^COMPARISON_SMOKE_OK ' "$LOG" || fail "Comparison fixture did not complete."
 grep -q '^SPEECH_LANGUAGE_SMOKE_OK ' "$LOG" || fail "Speech language fixture did not complete."
 cat "$LOG"
+LOG="$WORK_DIR/qa-latest/native-dubbing.log"
+env -u MSM_ALLOW_PAID_MAZIAO_PROBE MSM_DUBBING_OPTIMIZATION_SMOKE_DIR="$FIXTURE_ROOT/dubbing" "$APP/Contents/MacOS/$BINARY_NAME" > "$LOG" 2>&1
+grep -q '^DUBBING_SMOKE_OK ' "$LOG" || fail "Dubbing fixture did not complete."
+grep -q '^MAZIAO_CONTEXT_SMOKE_OK ' "$LOG" || fail "Maziao context fixture did not complete."
+cat "$LOG"
 ok "Native fixtures passed; disposable bundle removed on exit."

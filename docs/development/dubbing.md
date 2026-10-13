@@ -16,6 +16,10 @@ Maziao voice lists in Settings and the dubbing inspector include both the shared
 
 The 2026-10-13 GET-only check found 198 shared voices and two owned voices missing from the shared endpoint. Quân Anh's catalog metadata uses `vietten_speech`, while the provider model configuration uses `vieten_speech`. The app resolves that observed spelling for selection and sends the supported `vieten_speech` model ID. This check verifies catalog discovery; no audio was generated and voice quality was not tested.
 
+Catalog and quota refreshes belong to `DubbingProviderCoordinator`. Saving/removing a key cancels and invalidates its previous metadata requests before credential I/O. Late results and errors cannot replace the newest account's data; only accepted usage snapshots are persisted. A Maziao catalog run uses one credential across every page. Settings forwards intents instead of owning duplicate refresh state. Fake clients cover delayed old success/error and deletion while loading without accessing real credentials.
+
+Effective DUB clips are prepared once until clip/timing/rate changes. Lane, playback and export share the same snapshot, and active playback retains all overlapping clips. A synthetic 5,000-cue/3,000-clock-query check rebuilds the sorted list once when unchanged. This reduces repeated preparation; it is not a whole-app speed or cloud latency benchmark. The disk cache and load/merge/usage handles have a separate cache coordinator; render task lifetime has an independent generation/cancellation owner.
+
 ## Maziao short-cue context
 
 The user reported distortion in the raw generated short-cue audio, before local playback fitting, and selected paragraph DUB without an additional recognition step. Grouping gives the synthesizer more text context; technical tests do not guarantee that every voice/model will sound natural.

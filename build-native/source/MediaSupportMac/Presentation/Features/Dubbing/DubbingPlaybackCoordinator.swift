@@ -42,7 +42,7 @@ final class DubbingPlaybackCoordinator {
     }
 
     func synchronize(
-        cues: [DubbingRenderedCue],
+        snapshot: DubbingPlaybackSnapshot,
         mediaTime: Double,
         isPlaying: Bool,
         originalVolume: Float,
@@ -56,9 +56,7 @@ final class DubbingPlaybackCoordinator {
         }
 
         stopAudition()
-        let activeCues = cues.filter {
-            mediaTime >= $0.startSeconds && mediaTime < $0.startSeconds + $0.playedDuration
-        }
+        let activeCues = snapshot.activeCues(at: mediaTime)
         guard !activeCues.isEmpty else {
             stopSynchronized(restoreOriginalVolume: originalVolume)
             return

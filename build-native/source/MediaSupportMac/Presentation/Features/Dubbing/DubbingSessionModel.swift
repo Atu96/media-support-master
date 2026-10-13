@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Combine
 
 @MainActor
 final class DubbingSessionModel: ObservableObject {
@@ -12,26 +13,30 @@ final class DubbingSessionModel: ObservableObject {
                                    elevenSpeech: speech, maziaoSpeech: speech, readCredentials: false)
     }
 
-    @Published private(set) var renderedByCueID: [Int: DubbingRenderedCue] = [:]
+    @Published private(set) var renderedByCueID: [Int: DubbingRenderedCue] = [:] {
+        didSet { playbackSnapshots.invalidate() }
+    }
     @Published private(set) var plannedDubbingCount = 0
     @Published private(set) var shortParagraphCount = 0
-    @Published private(set) var playbackRateByFingerprint: [String: Double] = [:]
+    @Published private(set) var playbackRateByFingerprint: [String: Double] = [:] {
+        didSet { playbackSnapshots.invalidate() }
+    }
     @Published private(set) var renderingCueIDs: Set<Int> = []
     @Published private(set) var progressCurrent = 0
     @Published private(set) var progressTotal = 0
     @Published private(set) var isExporting = false
-    @Published private(set) var hasGoogleCredential = false
-    @Published private(set) var hasElevenLabsCredential = false
-    @Published private(set) var hasMaziaoCredential = false
-    @Published private(set) var googleVoices: [DubbingCloudVoice] = []
-    @Published private(set) var maziaoVoices: [MaziaoVoiceDescriptor] = []
-    @Published private(set) var elevenVoices: [DubbingCloudVoice] = []
-    @Published private(set) var isRefreshingGoogleVoices = false
-    @Published private(set) var isRefreshingMaziaoVoices = false
-    @Published private(set) var isRefreshingElevenVoices = false
-    @Published private(set) var googleVoiceCatalogError = ""
-    @Published private(set) var maziaoVoiceCatalogError = ""
-    @Published private(set) var elevenVoiceCatalogError = ""
+    var hasGoogleCredential: Bool { providers.hasGoogleCredential }
+    var hasElevenLabsCredential: Bool { providers.hasElevenLabsCredential }
+    var hasMaziaoCredential: Bool { providers.hasMaziaoCredential }
+    var googleVoices: [DubbingCloudVoice] { providers.googleVoices }
+    var maziaoVoices: [MaziaoVoiceDescriptor] { providers.maziaoVoices }
+    var elevenVoices: [DubbingCloudVoice] { providers.elevenVoices }
+    var isRefreshingGoogleVoices: Bool { providers.isRefreshingGoogleVoices }
+    var isRefreshingMaziaoVoices: Bool { providers.isRefreshingMaziaoVoices }
+    var isRefreshingElevenVoices: Bool { providers.isRefreshingElevenVoices }
+    var googleVoiceCatalogError: String { providers.googleVoiceCatalogError }
+    var maziaoVoiceCatalogError: String { providers.maziaoVoiceCatalogError }
+    var elevenVoiceCatalogError: String { providers.elevenVoiceCatalogError }
     @Published private(set) var cacheUsage: DubbingCacheUsage = .empty
     @Published var statusMessage = ""
     @Published var errorMessage: String?
@@ -121,20 +126,19 @@ final class DubbingSessionModel: ObservableObject {
         static let maziaoDubbingStyle = "msm.dubbing.maziaoDubbingStyle"
     }
 
+    let providers: DubbingProviderCoordinator
+    private var providerObservation: AnyCancellable?
     private let defaults: UserDefaults
     private let permitsUsageRefresh: Bool
-    private let cache: DubbingCacheStore
+    private let cacheCoordinator: DubbingCacheCoordinator
+    private var cache: DubbingCacheStore { cacheCoordinator.store }
     private let appleSpeech: DubbingSpeechSynthesizing
     private let googleSpeech: DubbingSpeechSynthesizing
     private let elevenSpeech: DubbingSpeechSynthesizing
     private let maziaoSpeech: DubbingSpeechSynthesizing
     private let playback = DubbingPlaybackCoordinator()
-    private var renderTask: Task<Void, Never>?
-    private var renderGeneration: UUID?
-    private var cacheLoadTask: Task<Void, Never>?
-    private var mergeAudioTask: Task<Void, Never>?
-    private var mergeAudioGeneration: UUID?
-    private var cacheUsageGeneration: UUID?
+    private let renderJob = DubbingJobLifecycle()
+    private let playbackSnapshots = DubbingPlaybackSnapshotCache()
     private var activeFingerprintByCueID: [Int: String] = [:]
 
     var voices: [DubbingVoiceDescriptor] { appleSpeech.availableVoices }
@@ -169,9 +173,10 @@ final class DubbingSessionModel: ObservableObject {
         maziaoSpeech: DubbingSpeechSynthesizing? = nil,
         readCredentials: Bool = true
     ) {
+        providers = DubbingProviderCoordinator(client: LiveDubbingProviderCatalogClient(), credentials: LiveDubbingProviderCredentialClient())
         self.defaults = defaults
         permitsUsageRefresh = readCredentials
-        self.cache = cache
+        cacheCoordinator = DubbingCacheCoordinator(store: cache)
         appleSpeech = speech ?? AppleSpeechDubbingService()
         self.googleSpeech = googleSpeech ?? GoogleCloudDubbingService()
         self.elevenSpeech = elevenSpeech ?? ElevenLabsDubbingService()
@@ -201,9 +206,21 @@ final class DubbingSessionModel: ObservableObject {
         } ?? [:]
         selectCompatibleGoogleVoiceIfNeeded()
         selectCompatibleVoiceIfNeeded()
-        hasGoogleCredential = readCredentials && GoogleTTSCredentialStore.hasKey
-        hasElevenLabsCredential = readCredentials && ElevenLabsCredentialStore.hasKey
-        hasMaziaoCredential = readCredentials && MaziaoCredentialStore.hasKey
+        providers.hasGoogleCredential = readCredentials && GoogleTTSCredentialStore.hasKey
+        providers.hasElevenLabsCredential = readCredentials && ElevenLabsCredentialStore.hasKey
+        providers.hasMaziaoCredential = readCredentials && MaziaoCredentialStore.hasKey
+        if readCredentials {
+            providers.maziaoAccount = ProviderUsageStore.maziaoSnapshot()
+            providers.elevenQuota = ProviderUsageStore.elevenLabsSnapshot()
+            providers.persistMaziao = { snapshot in
+                if let snapshot { ProviderUsageStore.saveMaziao(snapshot) } else { ProviderUsageStore.clearMaziao() }
+            }
+            providers.persistEleven = { snapshot in
+                if let snapshot { ProviderUsageStore.saveElevenLabs(snapshot) } else { ProviderUsageStore.clearElevenLabs() }
+            }
+        }
+        providerObservation = providers.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        providers.didUpdateCatalog = { [weak self] provider in self?.reconcileCatalog(provider) }
         refreshCacheUsage()
     }
 
@@ -239,7 +256,7 @@ final class DubbingSessionModel: ObservableObject {
         let cueIDs = Set(cues.map(\.id))
         var current = renderedByCueID.filter { cueIDs.contains($0.key) }
 
-        cacheLoadTask?.cancel()
+        cacheCoordinator.load.cancel()
         let language = languageIdentifier
         let provider = speechProvider
         let model = cacheModelIdentifier
@@ -268,7 +285,7 @@ final class DubbingSessionModel: ObservableObject {
             }
         }
         renderedByCueID = current
-        cacheLoadTask = Task { [weak self] in
+        cacheCoordinator.load.task = Task { [weak self] in
             guard let self else { return }
             if !previousUnits.isEmpty {
                 let worker = Task.detached(priority: .utility) {
@@ -338,8 +355,8 @@ final class DubbingSessionModel: ObservableObject {
                 mergedSourceIDs: mergedSourceIDs
               ) else { return }
 
-        cacheLoadTask?.cancel()
-        mergeAudioTask?.cancel()
+        cacheCoordinator.load.cancel()
+        cacheCoordinator.merge.cancel()
         playback.stopAll(restoreOriginalVolume: originalVolume)
 
         let language = languageIdentifier
@@ -398,8 +415,7 @@ final class DubbingSessionModel: ObservableObject {
         let canMergeAudio = sourceRendered.count == plan.sourceCues.count
         let mergedFingerprint = fingerprint(for: plan.mergedCue)
         let cache = self.cache
-        let generation = UUID()
-        mergeAudioGeneration = generation
+        let generation = cacheCoordinator.merge.begin()
 
         if canMergeAudio {
             renderingCueIDs.insert(plan.mergedCue.id)
@@ -407,7 +423,7 @@ final class DubbingSessionModel: ObservableObject {
             errorMessage = nil
         }
 
-        mergeAudioTask = Task { [weak self] in
+        cacheCoordinator.merge.task = Task { [weak self] in
             guard let self else { return }
             do {
                 for alias in aliases {
@@ -415,7 +431,7 @@ final class DubbingSessionModel: ObservableObject {
                     let aliasURL = try await Task.detached(priority: .utility) {
                         try cache.aliasClip(from: alias.sourceURL, for: alias.fingerprint)
                     }.value
-                    if self.mergeAudioGeneration == generation,
+                    if self.cacheCoordinator.merge.generation == generation,
                        let current = self.renderedByCueID[alias.cueID],
                        current.fingerprint == alias.fingerprint {
                         self.renderedByCueID[alias.cueID] = DubbingRenderedCue(
@@ -430,9 +446,8 @@ final class DubbingSessionModel: ObservableObject {
                 }
 
                 guard canMergeAudio else {
-                    if self.mergeAudioGeneration == generation {
-                        self.mergeAudioTask = nil
-                        self.mergeAudioGeneration = nil
+                    if self.cacheCoordinator.merge.generation == generation {
+                        self.cacheCoordinator.merge.finish(generation)
                     }
                     self.refreshCacheUsage()
                     return
@@ -474,16 +489,15 @@ final class DubbingSessionModel: ObservableObject {
                     throw DubbingError.invalidAudioBuffer
                 }
                 guard !Task.isCancelled,
-                      self.mergeAudioGeneration == generation,
+                      self.cacheCoordinator.merge.generation == generation,
                       self.activeFingerprintByCueID[plan.mergedCue.id] == mergedFingerprint else {
-                    if self.mergeAudioGeneration == generation {
+                    if self.cacheCoordinator.merge.generation == generation {
                         self.renderingCueIDs.remove(plan.mergedCue.id)
-                        self.mergeAudioTask = nil
-                        self.mergeAudioGeneration = nil
+                        self.cacheCoordinator.merge.finish(generation)
                     }
                     return
                 }
-                self.cacheLoadTask?.cancel()
+                self.cacheCoordinator.load.cancel()
                 self.renderedByCueID[plan.mergedCue.id] = DubbingRenderedCue(
                     id: plan.mergedCue.id,
                     startSeconds: plan.mergedCue.startSeconds,
@@ -493,22 +507,19 @@ final class DubbingSessionModel: ObservableObject {
                     fingerprint: mergedFingerprint
                 )
                 self.renderingCueIDs.remove(plan.mergedCue.id)
-                self.mergeAudioTask = nil
-                self.mergeAudioGeneration = nil
+                self.cacheCoordinator.merge.finish(generation)
                 self.statusMessage = L10n.format("Đã gộp âm thanh của %d cue.", sourceRendered.count)
                 self.refreshCacheUsage()
             } catch is CancellationError {
-                if self.mergeAudioGeneration == generation {
+                if self.cacheCoordinator.merge.generation == generation {
                     self.renderingCueIDs.remove(plan.mergedCue.id)
-                    self.mergeAudioTask = nil
-                    self.mergeAudioGeneration = nil
+                    self.cacheCoordinator.merge.finish(generation)
                 }
             } catch {
-                let isCurrentGeneration = self.mergeAudioGeneration == generation
+                let isCurrentGeneration = self.cacheCoordinator.merge.generation == generation
                 if isCurrentGeneration {
                     self.renderingCueIDs.remove(plan.mergedCue.id)
-                    self.mergeAudioTask = nil
-                    self.mergeAudioGeneration = nil
+                    self.cacheCoordinator.merge.finish(generation)
                 }
                 if canMergeAudio,
                    isCurrentGeneration,
@@ -533,11 +544,10 @@ final class DubbingSessionModel: ObservableObject {
         startRendering(cues, allCues: cues)
     }
 
-    var effectiveRenderedCues: [DubbingRenderedCue] {
-        renderedByCueID.values
-            .map(applyingSavedPlaybackRate)
-            .sorted { $0.startSeconds < $1.startSeconds }
+    private var effectivePlaybackSnapshot: DubbingPlaybackSnapshot {
+        playbackSnapshots.snapshot(rendered: renderedByCueID, rates: playbackRateByFingerprint)
     }
+    var effectiveRenderedCues: [DubbingRenderedCue] { effectivePlaybackSnapshot.cues }
 
     func effectiveRenderedCue(cueID: Int) -> DubbingRenderedCue? {
         renderedByCueID[cueID].map(applyingSavedPlaybackRate)
@@ -605,12 +615,8 @@ final class DubbingSessionModel: ObservableObject {
     }
 
     func cancelRendering() {
-        renderTask?.cancel()
-        renderGeneration = nil
-        renderTask = nil
-        mergeAudioTask?.cancel()
-        mergeAudioTask = nil
-        mergeAudioGeneration = nil
+        renderJob.cancel()
+        cacheCoordinator.merge.cancel()
         appleSpeech.stop()
         googleSpeech.stop()
         elevenSpeech.stop()
@@ -628,7 +634,7 @@ final class DubbingSessionModel: ObservableObject {
     /// silent; only committed playback drives synthesized speech.
     func synchronizePreviewPlayback(at seconds: Double, isPlaying: Bool) {
         playback.synchronize(
-            cues: effectiveRenderedCues,
+            snapshot: effectivePlaybackSnapshot,
             mediaTime: seconds,
             isPlaying: isPlaying,
             originalVolume: originalVolume,
@@ -679,6 +685,8 @@ final class DubbingSessionModel: ObservableObject {
 
     func clearCache() {
         cancelRendering()
+        cacheCoordinator.load.cancel()
+        cacheCoordinator.usage.cancel()
         playback.stopAll(restoreOriginalVolume: originalVolume)
         do {
             try cache.removeAll()
@@ -702,17 +710,7 @@ final class DubbingSessionModel: ObservableObject {
     }
 
     func refreshCacheUsage() {
-        let generation = UUID()
-        cacheUsageGeneration = generation
-        let cache = self.cache
-        Task { [weak self] in
-            let usage = await Task.detached(priority: .utility) {
-                (try? cache.usage()) ?? .empty
-            }.value
-            guard let self, self.cacheUsageGeneration == generation else { return }
-            self.cacheUsage = usage
-            self.cacheUsageGeneration = nil
-        }
+        cacheCoordinator.refreshUsage { [weak self] in self?.cacheUsage = $0 }
     }
 
     private func persistPlaybackRates() {
@@ -768,10 +766,9 @@ final class DubbingSessionModel: ObservableObject {
         } catch { errorMessage = error.localizedDescription; return }
         guard !cues.isEmpty else { return }
         synchronize(cues: allCues)
-        renderTask?.cancel()
-        cacheLoadTask?.cancel()
-        let generation = UUID()
-        renderGeneration = generation
+        renderJob.cancel()
+        cacheCoordinator.load.cancel()
+        let generation = renderJob.begin()
         progressCurrent = 0
         progressTotal = cues.count
         statusMessage = L10n.format("Đang tạo giọng %@…", speechProvider.label)
@@ -786,7 +783,7 @@ final class DubbingSessionModel: ObservableObject {
         let rate = speechRate
         let providerService = selectedSpeechService
         let maziaoParallelism = min(2, max(1, maziaoConcurrentBatches))
-        renderTask = Task { [weak self] in
+        renderJob.task = Task { [weak self] in
             guard let self else { return }
             do {
                 try Task.checkCancellation()
@@ -883,7 +880,7 @@ final class DubbingSessionModel: ObservableObject {
                         let content = DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
                             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
                         try self.cache.registerSpeechReuse(content: content, fingerprint: fingerprint)
-                        guard self.renderGeneration == generation else { throw CancellationError() }
+                        guard self.renderJob.generation == generation else { throw CancellationError() }
                         for target in groups[content] ?? [cue] {
                             let targetID = DubbingFingerprint.make(cue: target, localeIdentifier: language,
                                 voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
@@ -895,7 +892,7 @@ final class DubbingSessionModel: ObservableObject {
                             }
                         }
                     }, completed: { index in
-                        guard self.renderGeneration == generation else { return }
+                        guard self.renderJob.generation == generation else { return }
                         let content = DubbingFingerprint.speechContent(cue: unique[index], localeIdentifier: language,
                             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
                         completedCount += groups[content]?.count ?? 1
@@ -909,7 +906,7 @@ final class DubbingSessionModel: ObservableObject {
                     // Maziao clips were committed as each complete batch arrived; do not replay deleted/finished cues.
                     if provider == .maziao, batchService != nil { break }
                     try Task.checkCancellation()
-                    guard self.renderGeneration == generation else { throw CancellationError() }
+                    guard self.renderJob.generation == generation else { throw CancellationError() }
                     let fingerprint = DubbingFingerprint.make(
                         cue: cue,
                         localeIdentifier: language,
@@ -959,7 +956,7 @@ final class DubbingSessionModel: ObservableObject {
                         throw DubbingError.invalidAudioBuffer
                     }
                     try Task.checkCancellation()
-                    guard self.renderGeneration == generation else { throw CancellationError() }
+                    guard self.renderJob.generation == generation else { throw CancellationError() }
                     try self.cache.registerSpeechReuse(
                         content: DubbingFingerprint.speechContent(cue: cue, localeIdentifier: language,
                             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model),
@@ -979,25 +976,25 @@ final class DubbingSessionModel: ObservableObject {
                     self.progressCurrent = max(self.progressCurrent, processedCount)
                 }
                 try Task.checkCancellation()
-                guard self.renderGeneration == generation else { throw CancellationError() }
-                self.renderTask = nil
+                guard self.renderJob.generation == generation else { throw CancellationError() }
+                self.renderJob.finish(generation)
                 self.renderingCueIDs.removeAll()
                 self.statusMessage = L10n.format(self.usesMaziaoParagraphs ? "Đã tạo giọng cho %d đoạn liền mạch." : "Đã tạo giọng cho %d cue.", cues.count)
                 self.refreshCacheUsage()
                 self.synchronize(cues: self.latestSourceCues)
                 if self.permitsUsageRefresh && provider == .elevenLabs {
-                    _ = try? await ElevenLabsQuotaService.refresh()
+                    await self.refreshProviderUsage(.elevenLabs)
                 } else if self.permitsUsageRefresh && provider == .maziao {
-                    _ = try? await MaziaoAPIClient.account()
+                    await self.refreshProviderUsage(.maziao)
                 }
             } catch is CancellationError {
-                guard self.renderGeneration == generation else { return }
-                self.renderTask = nil
+                guard self.renderJob.generation == generation else { return }
+                self.renderJob.finish(generation)
                 self.renderingCueIDs.removeAll()
                 self.statusMessage = L10n.string("Đã dừng tạo giọng.")
             } catch {
-                guard self.renderGeneration == generation else { return }
-                self.renderTask = nil
+                guard self.renderJob.generation == generation else { return }
+                self.renderJob.finish(generation)
                 self.renderingCueIDs.removeAll()
                 if let dubbingError = error as? DubbingError,
                    case .missingCredential = dubbingError {
@@ -1014,7 +1011,7 @@ final class DubbingSessionModel: ObservableObject {
         provider: DubbingSpeechProvider, model: String, generation: UUID
     ) async throws {
         try Task.checkCancellation()
-        guard renderGeneration == generation else { throw CancellationError() }
+        guard renderJob.generation == generation else { throw CancellationError() }
         let fingerprint = DubbingFingerprint.make(cue: cue, localeIdentifier: language,
             voiceIdentifier: voice, rate: rate, provider: provider, modelIdentifier: model)
         guard let url = cache.existingClipURL(for: fingerprint) else { throw DubbingError.invalidAudioBuffer }
@@ -1024,7 +1021,7 @@ final class DubbingSessionModel: ObservableObject {
             throw DubbingError.invalidAudioBuffer
         }
         try Task.checkCancellation()
-        guard renderGeneration == generation,
+        guard renderJob.generation == generation,
               activeFingerprintByCueID[cue.id] == nil || activeFingerprintByCueID[cue.id] == fingerprint else {
             throw CancellationError()
         }
@@ -1041,7 +1038,7 @@ final class DubbingSessionModel: ObservableObject {
         batchTotal: Int,
         generation: UUID
     ) {
-        guard renderGeneration == generation, !Task.isCancelled else { return }
+        guard renderJob.generation == generation, !Task.isCancelled else { return }
         switch progress {
         case .resuming:
             statusMessage = L10n.format("Nhóm %d/%d · Đang tiếp tục tác vụ Maziao đã gửi…", batchCurrent, batchTotal)
@@ -1166,65 +1163,37 @@ final class DubbingSessionModel: ObservableObject {
         }
     }
 
-    func updateGoogleVoiceCatalog(_ voices: [DubbingCloudVoice]) {
-        googleVoices = voices
-        googleVoiceCatalogError = ""
-        selectCompatibleGoogleVoiceIfNeeded()
-    }
-
-    func clearGoogleVoiceCatalog() {
-        googleVoices = []
-        googleVoiceCatalogError = ""
-        selectCompatibleGoogleVoiceIfNeeded()
-    }
-
-    func refreshGoogleVoiceCatalog() async {
-        guard hasGoogleCredential, !isRefreshingGoogleVoices else { return }
-        isRefreshingGoogleVoices = true
-        googleVoiceCatalogError = ""
-        defer { isRefreshingGoogleVoices = false }
-        do {
-            updateGoogleVoiceCatalog(try await GoogleVoiceCatalogAPI.voices())
-        } catch {
-            if let dubbingError = error as? DubbingError,
-               case .missingCredential = dubbingError {
-                setCredentialAvailability(false, for: .googleCloud)
-            }
-            googleVoiceCatalogError = error.localizedDescription
+    private func reconcileCatalog(_ provider: DubbingSpeechProvider) {
+        switch provider {
+        case .googleCloud: selectCompatibleGoogleVoiceIfNeeded()
+        case .maziao:
+            applyMaziaoSelection(MaziaoVoiceSelectionPolicy.reconcile(voices: maziaoVoices,
+                currentVoiceID: maziaoVoiceIdentifier, currentModel: maziaoModel))
+        case .elevenLabs:
+            if elevenVoiceIdentifier.isEmpty, let first = elevenVoices.first { selectElevenVoice(first.id) }
+            else if let selected = elevenVoices.first(where: { $0.id == elevenVoiceIdentifier }) { adoptLanguage(from: selected.language) }
+        case .appleOffline: break
         }
     }
 
-    func updateMaziaoVoiceCatalog(_ voices: [MaziaoVoiceDescriptor]) {
-        maziaoVoices = voices
-        maziaoVoiceCatalogError = ""
-        applyMaziaoSelection(MaziaoVoiceSelectionPolicy.reconcile(
-            voices: voices,
-            currentVoiceID: maziaoVoiceIdentifier,
-            currentModel: maziaoModel
-        ))
-    }
+    func updateGoogleVoiceCatalog(_ voices: [DubbingCloudVoice]) { providers.updateGoogle(voices) }
+    func updateMaziaoVoiceCatalog(_ voices: [MaziaoVoiceDescriptor]) { providers.updateMaziao(voices) }
+    func clearGoogleVoiceCatalog() { providers.clearCatalog(.googleCloud); selectCompatibleGoogleVoiceIfNeeded() }
+    func clearMaziaoVoiceCatalog() { providers.clearCatalog(.maziao); maziaoVoiceIdentifier = "" }
+    func refreshGoogleVoiceCatalog() async { await providers.refreshCatalog(.googleCloud) }
+    func refreshMaziaoVoiceCatalog() async { await providers.refreshCatalog(.maziao) }
 
-    func clearMaziaoVoiceCatalog() {
-        maziaoVoices = []
-        maziaoVoiceCatalogError = ""
-        maziaoVoiceIdentifier = ""
+    func saveCredential(_ key: String, provider: DubbingSpeechProvider) async throws {
+        try await providers.changeCredential(key, provider: provider)
+        if provider == .maziao { maziaoVoiceIdentifier = "" }
+        if provider == .googleCloud { selectCompatibleGoogleVoiceIfNeeded() }
     }
-
-    func refreshMaziaoVoiceCatalog() async {
-        guard hasMaziaoCredential, !isRefreshingMaziaoVoices else { return }
-        isRefreshingMaziaoVoices = true
-        maziaoVoiceCatalogError = ""
-        defer { isRefreshingMaziaoVoices = false }
-        do {
-            updateMaziaoVoiceCatalog(try await MaziaoAPIClient.voices())
-        } catch {
-            if let dubbingError = error as? DubbingError,
-               case .missingCredential = dubbingError {
-                setCredentialAvailability(false, for: .maziao)
-            }
-            maziaoVoiceCatalogError = error.localizedDescription
-        }
+    func removeCredential(provider: DubbingSpeechProvider) async throws {
+        try await providers.changeCredential(nil, provider: provider)
+        if provider == .maziao { maziaoVoiceIdentifier = "" }
+        if provider == .googleCloud { selectCompatibleGoogleVoiceIfNeeded() }
     }
+    func refreshProviderUsage(_ provider: DubbingSpeechProvider) async { await providers.refreshUsage(provider) }
 
     func selectMaziaoModel(_ model: MaziaoDubbingModel) {
         applyMaziaoSelection(MaziaoVoiceSelectionPolicy.selectingModel(
@@ -1249,36 +1218,9 @@ final class DubbingSessionModel: ObservableObject {
         }
     }
 
-    func updateElevenVoiceCatalog(_ voices: [DubbingCloudVoice]) {
-        elevenVoices = voices
-        elevenVoiceCatalogError = ""
-        if elevenVoiceIdentifier.isEmpty, let first = voices.first {
-            selectElevenVoice(first.id)
-        } else if let selected = voices.first(where: { $0.id == elevenVoiceIdentifier }) {
-            adoptLanguage(from: selected.language)
-        }
-    }
-
-    func clearElevenVoiceCatalog() {
-        elevenVoices = []
-        elevenVoiceCatalogError = ""
-    }
-
-    func refreshElevenVoiceCatalog() async {
-        guard hasElevenLabsCredential, !isRefreshingElevenVoices else { return }
-        isRefreshingElevenVoices = true
-        elevenVoiceCatalogError = ""
-        defer { isRefreshingElevenVoices = false }
-        do {
-            updateElevenVoiceCatalog(try await ElevenLabsVoiceCatalogAPI.voices())
-        } catch {
-            if let dubbingError = error as? DubbingError,
-               case .missingCredential = dubbingError {
-                setCredentialAvailability(false, for: .elevenLabs)
-            }
-            elevenVoiceCatalogError = error.localizedDescription
-        }
-    }
+    func updateElevenVoiceCatalog(_ voices: [DubbingCloudVoice]) { providers.updateEleven(voices) }
+    func clearElevenVoiceCatalog() { providers.clearCatalog(.elevenLabs) }
+    func refreshElevenVoiceCatalog() async { await providers.refreshCatalog(.elevenLabs) }
 
     func selectElevenVoice(_ voiceID: String) {
         elevenVoiceIdentifier = voiceID
@@ -1320,18 +1262,9 @@ final class DubbingSessionModel: ObservableObject {
     }
 
     func setCredentialAvailability(_ available: Bool, for provider: DubbingSpeechProvider) {
-        switch provider {
-        case .googleCloud:
-            hasGoogleCredential = available
-            if !available { clearGoogleVoiceCatalog() }
-        case .maziao:
-            hasMaziaoCredential = available
-            if !available { clearMaziaoVoiceCatalog() }
-        case .elevenLabs:
-            hasElevenLabsCredential = available
-            if !available { clearElevenVoiceCatalog() }
-        case .appleOffline: break
-        }
+        providers.setCredentialAvailability(available, provider: provider)
+        if !available, provider == .maziao { maziaoVoiceIdentifier = "" }
+        if !available, provider == .googleCloud { selectCompatibleGoogleVoiceIfNeeded() }
     }
 
     private var selectedSpeechService: DubbingSpeechSynthesizing {

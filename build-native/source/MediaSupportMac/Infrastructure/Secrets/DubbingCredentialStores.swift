@@ -38,41 +38,89 @@ enum MaziaoCredentialStore {
 actor DubbingCredentialAccess {
     static let shared = DubbingCredentialAccess()
     private var googleLoadTask: Task<String, Never>?
+    private var googleRevision = 0
     private var elevenLabsLoadTask: Task<String, Never>?
+    private var elevenLabsRevision = 0
     private var maziaoLoadTask: Task<String, Never>?
+    private var maziaoRevision = 0
 
     func loadGoogle() async -> String {
-        if let googleLoadTask { return await googleLoadTask.value }
+        let revision = googleRevision
+        if let googleLoadTask {
+            let value = await googleLoadTask.value
+            return googleRevision == revision ? value : ""
+        }
         let task = Task { await GoogleTTSCredentialStore.load() }
         googleLoadTask = task
         let value = await task.value
+        guard googleRevision == revision else { return "" }
         googleLoadTask = nil
         return value
     }
-    func saveGoogle(_ key: String) throws { try GoogleTTSCredentialStore.save(key) }
-    func deleteGoogle() throws { try GoogleTTSCredentialStore.delete() }
+    func saveGoogle(_ key: String) throws {
+        googleRevision += 1
+        googleLoadTask?.cancel()
+        googleLoadTask = nil
+        try GoogleTTSCredentialStore.save(key)
+    }
+    func deleteGoogle() throws {
+        googleRevision += 1
+        googleLoadTask?.cancel()
+        googleLoadTask = nil
+        try GoogleTTSCredentialStore.delete()
+    }
 
     func loadElevenLabs() async -> String {
-        if let elevenLabsLoadTask { return await elevenLabsLoadTask.value }
+        let revision = elevenLabsRevision
+        if let elevenLabsLoadTask {
+            let value = await elevenLabsLoadTask.value
+            return elevenLabsRevision == revision ? value : ""
+        }
         let task = Task { await ElevenLabsCredentialStore.load() }
         elevenLabsLoadTask = task
         let value = await task.value
+        guard elevenLabsRevision == revision else { return "" }
         elevenLabsLoadTask = nil
         return value
     }
-    func saveElevenLabs(_ key: String) throws { try ElevenLabsCredentialStore.save(key) }
-    func deleteElevenLabs() throws { try ElevenLabsCredentialStore.delete() }
+    func saveElevenLabs(_ key: String) throws {
+        elevenLabsRevision += 1
+        elevenLabsLoadTask?.cancel()
+        elevenLabsLoadTask = nil
+        try ElevenLabsCredentialStore.save(key)
+    }
+    func deleteElevenLabs() throws {
+        elevenLabsRevision += 1
+        elevenLabsLoadTask?.cancel()
+        elevenLabsLoadTask = nil
+        try ElevenLabsCredentialStore.delete()
+    }
 
     func loadMaziao() async -> String {
-        if let maziaoLoadTask { return await maziaoLoadTask.value }
+        let revision = maziaoRevision
+        if let maziaoLoadTask {
+            let value = await maziaoLoadTask.value
+            return maziaoRevision == revision ? value : ""
+        }
         let task = Task { await MaziaoCredentialStore.load() }
         maziaoLoadTask = task
         let value = await task.value
+        guard maziaoRevision == revision else { return "" }
         maziaoLoadTask = nil
         return value
     }
-    func saveMaziao(_ key: String) throws { try MaziaoCredentialStore.save(key) }
-    func deleteMaziao() throws { try MaziaoCredentialStore.delete() }
+    func saveMaziao(_ key: String) throws {
+        maziaoRevision += 1
+        maziaoLoadTask?.cancel()
+        maziaoLoadTask = nil
+        try MaziaoCredentialStore.save(key)
+    }
+    func deleteMaziao() throws {
+        maziaoRevision += 1
+        maziaoLoadTask?.cancel()
+        maziaoLoadTask = nil
+        try MaziaoCredentialStore.delete()
+    }
 }
 
 private enum DubbingKeychainStore {
