@@ -155,7 +155,7 @@ final class DubbingSessionModel: ObservableObject {
     }
 
     var maziaoVoicesForSelectedModel: [MaziaoVoiceDescriptor] {
-        maziaoVoices.filter { $0.modelID == nil || $0.modelID == maziaoModel.rawValue }
+        maziaoVoices.filter { $0.modelID == nil || MaziaoDubbingModel.catalogModel(for: $0.modelID) == maziaoModel }
     }
 
     var isRendering: Bool { !renderingCueIDs.isEmpty }

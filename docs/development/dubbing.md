@@ -10,6 +10,12 @@ The queue uses structured child tasks and drains them on error/cancellation. Nat
 
 Maziao defaults to **Connected paragraphs** in Settings → Dubbing → Maziao. Nearby subtitle cues become one speech paragraph and one independent DUB block. One pending paragraph uses the paragraph endpoint; multiple paragraphs use `multiParts`, each part containing a paragraph. Batches remain around32 render units/4,000 characters and up to **two batches**, with a **one-batch** option for accounts with lower concurrency. A shared limiter caps all downloads/conversions at two, including nested batches. Account/input/full-receipt leases remain held through local commit/finish; overlapping inputs or recovered receipts serialize so another worker cannot delete the receipt prematurely. Requests retain validation, real provider model/voice and recovery semantics; concurrency/rate-limit failures do not trigger blind paid retries.
 
+## Maziao voice catalog
+
+Maziao voice lists in Settings and the dubbing inspector include both the shared catalog and voices owned by the current API account. Refresh fetches every page of `/api/voices` and `/api/voices/my-voices`, removes duplicate IDs and prefers owned metadata. A failed refresh reports an error instead of publishing an incomplete list. Both lists show voices across models, with model names alongside them; selecting a voice updates its model automatically. Use **Refresh** after cloning a new voice on Maziao, with an API key from the same account.
+
+The 2026-10-13 GET-only check found 198 shared voices and two owned voices missing from the shared endpoint. Quân Anh's catalog metadata uses `vietten_speech`, while the provider model configuration uses `vieten_speech`. The app resolves that observed spelling for selection and sends the supported `vieten_speech` model ID. This check verifies catalog discovery; no audio was generated and voice quality was not tested.
+
 ## Maziao short-cue context
 
 The user reported distortion in the raw generated short-cue audio, before local playback fitting, and selected paragraph DUB without an additional recognition step. Grouping gives the synthesizer more text context; technical tests do not guarantee that every voice/model will sound natural.

@@ -61,41 +61,21 @@ enum MaziaoAPIClient {
     }()
 
     static func voices(language: String? = nil) async throws -> [MaziaoVoiceDescriptor] {
-        let pageSize = 100
-        let maximumPages = 200
-        var offset = 0
-        var collected: [MaziaoVoiceDescriptor] = []
-        var seenIDs: Set<String> = []
-
-        for pageIndex in 0..<maximumPages {
-            try Task.checkCancellation()
-            var components = URLComponents(url: baseURL.appendingPathComponent("api/voices"), resolvingAgainstBaseURL: false)!
+        let collected = try await MaziaoVoiceCatalogWorkflow.load { source, offset in
+            var components = URLComponents(url: baseURL.appendingPathComponent(source.rawValue), resolvingAgainstBaseURL: false)!
             var items = [
-                URLQueryItem(name: "limit", value: String(pageSize)),
+                URLQueryItem(name: "limit", value: "100"),
                 URLQueryItem(name: "offset", value: String(offset)),
             ]
-            if let language, !language.isEmpty {
+            if source == .general, let language, !language.isEmpty {
                 items.append(URLQueryItem(name: "language", value: language))
             }
             components.queryItems = items
             let data = try await send(method: "GET", url: components.url!, operation: .voices)
-            let page = try MaziaoResponseDecoder.voicePage(from: data)
-            for voice in page.voices where seenIDs.insert(voice.id).inserted {
-                collected.append(voice)
-            }
-
-            let pageOffset = page.offset ?? offset
-            let step = max(1, page.limit ?? page.voices.count)
-            let nextOffset = pageOffset + step
-            let hasMore = page.total.map { nextOffset < $0 } ?? (page.voices.count >= pageSize)
-            guard hasMore else { return collected }
-            guard !page.voices.isEmpty, nextOffset > offset else {
-                throw DubbingError.providerResponse("Maziao trả phân trang danh sách giọng không hợp lệ.")
-            }
-            if pageIndex == maximumPages - 1 {
-                throw DubbingError.providerResponse("Danh sách giọng Maziao vượt giới hạn đồng bộ an toàn.")
-            }
-            offset = nextOffset
+            return try MaziaoResponseDecoder.voicePage(from: data)
+        }
+        if let language, !language.isEmpty {
+            return collected.filter { $0.language.caseInsensitiveCompare(language) == .orderedSame }
         }
         return collected
     }

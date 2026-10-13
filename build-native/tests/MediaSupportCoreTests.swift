@@ -128,6 +128,8 @@ enum MediaSupportCoreTests {
         run("Dubbing fingerprint và fit cue ổn định", testDubbingModels)
         run("Nút lồng cue chỉ bật khi selection và provider hợp lệ", testDubbingToolbarAvailability)
         run("Chọn giọng Maziao luôn đồng bộ đúng mô hình", testMaziaoVoiceSelectionPolicy)
+        await runAsync("Maziao đồng bộ giọng riêng và xử lý mã mô hình catalog", testMaziaoOwnedVoiceCatalog)
+        await runAsync("Maziao catalog lỗi/hủy không trả danh sách thiếu", testMaziaoVoiceCatalogFailure)
         run("Catalog giọng nhóm và tìm theo tên quốc gia", testDubbingVoiceCatalogGrouping)
         run("Google và ElevenLabs decode catalog giọng phân trang", testCloudVoiceCatalogDecoders)
         run("Cache DUB đo dung lượng thật và không đếm đôi hard-link", testDubbingCacheUsage)
@@ -2388,6 +2390,73 @@ enum MediaSupportCoreTests {
             currentModel: .lingualV2
         )
         try expect(selected.model == .vieten, "đổi voice phải đồng bộ model của voice")
+    }
+
+    @MainActor
+    private static func testMaziaoOwnedVoiceCatalog() async throws {
+        func voice(_ id: String, _ name: String, _ model: String) -> MaziaoVoiceDescriptor {
+            MaziaoVoiceDescriptor(id: id, name: name, language: "vi", gender: "male", previewURL: nil, modelID: model)
+        }
+        let general = voice("public-fixture", "Public fixture", "vietten_speech")
+        let oldClone = voice("clone-fixture-1", "Old fixture", "lingual_speech_v2")
+        let clone1 = voice("clone-fixture-1", "Updated fixture", "lingual_speech_v2")
+        let clone2 = voice("clone-fixture-2", "Second fixture", "vieten_speech")
+        var calls: [String] = []
+        let voices = try await MaziaoVoiceCatalogWorkflow.load { source, offset in
+            calls.append("\(source.rawValue):\(offset)")
+            switch (source, offset) {
+            case (.general, 0): return MaziaoVoicePage(voices: [general], total: 2, limit: 1, offset: 0)
+            case (.general, 1): return MaziaoVoicePage(voices: [oldClone], total: 2, limit: 1, offset: 1)
+            case (.owned, 0): return MaziaoVoicePage(voices: [clone1], total: 2, limit: nil, offset: nil)
+            case (.owned, 1): return MaziaoVoicePage(voices: [clone2], total: 2, limit: nil, offset: nil)
+            default: throw TestFailure(description: "catalog yêu cầu sai trang")
+            }
+        }
+        try expect(calls == ["api/voices:0", "api/voices:1", "api/voices/my-voices:0", "api/voices/my-voices:1"], "phải tải hết cả hai catalog")
+        try expect(voices == [general, clone1, clone2], "giọng riêng phải thêm đủ và cập nhật cùng ID, không lặp")
+        let selected = MaziaoVoiceSelectionPolicy.selectingVoice(general.id, voices: voices, currentModel: .lingualV2)
+        try expect(selected.model == .vieten && selected.model.rawValue == "vieten_speech", "catalog typo không được gửi làm model API")
+        let restored = MaziaoVoiceSelectionPolicy.reconcile(voices: voices, currentVoiceID: general.id, currentModel: .lingualV2)
+        let retained = MaziaoVoiceSelectionPolicy.selectingModel(.vieten, voices: voices, currentVoiceID: general.id)
+        try expect(restored == selected && retained == selected, "giữ giọng đã chọn qua refresh/đổi model")
+        try expect(general.modelID == "vietten_speech", "metadata gốc không được sửa")
+        try expect(MaziaoDubbingModel.catalogModel(for: "future_unknown_model") == nil, "không đoán alias cho model chưa biết")
+        let items = voices.map(\.catalogItem)
+        let matches = DubbingVoiceCatalogPolicy.groups(voices: items, query: "fixture", interfaceLocaleIdentifier: "vi")
+        try expect(matches.flatMap(\.voices).count == 3 && items[0].detail.contains("VietEN"), "giọng mọi model phải tìm được với nhãn model")
+        let cloneSelection = MaziaoVoiceSelectionPolicy.selectingVoice(clone2.id, voices: voices, currentModel: .lingualV2)
+        try expect(cloneSelection.model == .vieten, "chọn clone phải đồng bộ model")
+    }
+
+    @MainActor
+    private static func testMaziaoVoiceCatalogFailure() async throws {
+        let voice = MaziaoVoiceDescriptor(id: "fixture", name: "Fixture", language: "vi", gender: "male", previewURL: nil, modelID: nil)
+        enum FixtureError: Error { case unavailable }
+        do {
+            _ = try await MaziaoVoiceCatalogWorkflow.load { source, _ in
+                if source == .owned { throw FixtureError.unavailable }
+                return MaziaoVoicePage(voices: [voice], total: 1, limit: 100, offset: 0)
+            }
+            throw TestFailure(description: "không được báo sync thành công khi giọng riêng lỗi")
+        } catch FixtureError.unavailable { }
+        do {
+            _ = try await MaziaoVoiceCatalogWorkflow.load { _, _ in
+                MaziaoVoicePage(voices: [], total: 200, limit: 100, offset: 0)
+            }
+            throw TestFailure(description: "phân trang hỏng phải dừng")
+        } catch DubbingError.providerResponse { }
+        var calls = 0
+        let task = Task { @MainActor in
+            try await MaziaoVoiceCatalogWorkflow.load { _, _ in
+                calls += 1
+                throw CancellationError()
+            }
+        }
+        do {
+            _ = try await task.value
+            throw TestFailure(description: "catalog hủy phải dừng")
+        } catch is CancellationError { }
+        try expect(calls == 1, "hủy không tiếp tục tải trang tiếp theo")
     }
 
     private static func testDubbingVoiceCatalogGrouping() throws {

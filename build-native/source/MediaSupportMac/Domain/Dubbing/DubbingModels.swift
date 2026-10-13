@@ -44,6 +44,13 @@ enum MaziaoDubbingModel: String, CaseIterable, Identifiable, Sendable {
     case lingualBase = "lingual_speech_base"
 
     var id: String { rawValue }
+    /// The live catalog spells some VietEN voices `vietten_speech`, whereas
+    /// /api/configs and the submit contract publish only `vieten_speech`.
+    /// Keep raw voice metadata intact; resolve this observed spelling for selection.
+    static func catalogModel(for identifier: String?) -> Self? {
+        guard let identifier else { return nil }
+        return Self(rawValue: identifier == "vietten_speech" ? "vieten_speech" : identifier)
+    }
     var label: String {
         switch self {
         case .lingualV2: "Lingual Speech v2"
@@ -61,6 +68,13 @@ struct MaziaoVoiceDescriptor: Identifiable, Hashable, Sendable {
     let gender: String
     let previewURL: URL?
     let modelID: String?
+
+    var catalogItem: DubbingVoiceCatalogItem {
+        let model = MaziaoDubbingModel.catalogModel(for: modelID)?.label ?? modelID ?? ""
+        let detail = [DubbingVoiceCatalogPolicy.localizedGender(gender), model]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+        return DubbingVoiceCatalogItem(id: id, name: name, language: language, detail: detail)
+    }
 }
 
 struct MaziaoVoicePage: Equatable, Sendable {
@@ -179,9 +193,9 @@ enum MaziaoVoiceSelectionPolicy {
         currentModel: MaziaoDubbingModel
     ) -> MaziaoVoiceSelection {
         let voice = voices.first(where: { $0.id == currentVoiceID })
-            ?? voices.first(where: { $0.modelID == currentModel.rawValue })
+            ?? voices.first(where: { MaziaoDubbingModel.catalogModel(for: $0.modelID) == currentModel })
             ?? voices.first
-        let model = voice?.modelID.flatMap(MaziaoDubbingModel.init(rawValue:)) ?? currentModel
+        let model = MaziaoDubbingModel.catalogModel(for: voice?.modelID) ?? currentModel
         return MaziaoVoiceSelection(voiceID: voice?.id ?? "", model: model)
     }
 
@@ -192,10 +206,10 @@ enum MaziaoVoiceSelectionPolicy {
     ) -> MaziaoVoiceSelection {
         let current = voices.first(where: { $0.id == currentVoiceID })
         let voiceID: String
-        if current?.modelID == nil || current?.modelID == model.rawValue {
-            voiceID = current?.id ?? voices.first(where: { $0.modelID == model.rawValue })?.id ?? ""
+        if current?.modelID == nil || MaziaoDubbingModel.catalogModel(for: current?.modelID) == model {
+            voiceID = current?.id ?? voices.first(where: { MaziaoDubbingModel.catalogModel(for: $0.modelID) == model })?.id ?? ""
         } else {
-            voiceID = voices.first(where: { $0.modelID == model.rawValue })?.id ?? ""
+            voiceID = voices.first(where: { MaziaoDubbingModel.catalogModel(for: $0.modelID) == model })?.id ?? ""
         }
         return MaziaoVoiceSelection(voiceID: voiceID, model: model)
     }
@@ -205,8 +219,7 @@ enum MaziaoVoiceSelectionPolicy {
         voices: [MaziaoVoiceDescriptor],
         currentModel: MaziaoDubbingModel
     ) -> MaziaoVoiceSelection {
-        let model = voices.first(where: { $0.id == voiceID })?.modelID
-            .flatMap(MaziaoDubbingModel.init(rawValue:)) ?? currentModel
+        let model = MaziaoDubbingModel.catalogModel(for: voices.first(where: { $0.id == voiceID })?.modelID) ?? currentModel
         return MaziaoVoiceSelection(voiceID: voiceID, model: model)
     }
 }

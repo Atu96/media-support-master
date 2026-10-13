@@ -315,9 +315,7 @@ struct DubbingInspectorPanel: View {
     }
 
     private var maziaoVoiceItems: [DubbingVoiceCatalogItem] {
-        session.maziaoVoicesForSelectedModel.map {
-            DubbingVoiceCatalogItem(id: $0.id, name: $0.name, language: $0.language, detail: DubbingVoiceCatalogPolicy.localizedGender($0.gender))
-        }
+        session.maziaoVoices.map(\.catalogItem)
     }
 
     private var elevenVoiceItems: [DubbingVoiceCatalogItem] {

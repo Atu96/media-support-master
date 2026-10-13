@@ -1,5 +1,48 @@
 import Foundation
 
+enum MaziaoVoiceCatalogSource: String, CaseIterable, Sendable {
+    case general = "api/voices"
+    case owned = "api/voices/my-voices"
+}
+
+/// GET-only catalog orchestration. A failed page never publishes a partial catalog.
+@MainActor
+enum MaziaoVoiceCatalogWorkflow {
+    static func load(
+        fetchPage: (MaziaoVoiceCatalogSource, Int) async throws -> MaziaoVoicePage
+    ) async throws -> [MaziaoVoiceDescriptor] {
+        var collected: [MaziaoVoiceDescriptor] = []
+        var indices: [String: Int] = [:]
+        for source in MaziaoVoiceCatalogSource.allCases {
+            var offset = 0
+            for pageIndex in 0..<200 {
+                try Task.checkCancellation()
+                let page = try await fetchPage(source, offset)
+                try Task.checkCancellation()
+                for voice in page.voices {
+                    if let index = indices[voice.id] {
+                        if source == .owned { collected[index] = voice }
+                    } else {
+                        indices[voice.id] = collected.count
+                        collected.append(voice)
+                    }
+                }
+                let nextOffset = (page.offset ?? offset) + max(1, page.limit ?? page.voices.count)
+                let hasMore = page.total.map { nextOffset < $0 } ?? (page.voices.count >= 100)
+                guard hasMore else { break }
+                guard !page.voices.isEmpty, nextOffset > offset else {
+                    throw DubbingError.providerResponse("Maziao trả phân trang danh sách giọng không hợp lệ.")
+                }
+                guard pageIndex < 199 else {
+                    throw DubbingError.providerResponse("Danh sách giọng Maziao vượt giới hạn đồng bộ an toàn.")
+                }
+                offset = nextOffset
+            }
+        }
+        return collected
+    }
+}
+
 struct MaziaoSubmitReceipt: Equatable, Sendable {
     let taskID: String
     let remainingCredits: Int?
