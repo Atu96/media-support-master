@@ -62,6 +62,7 @@ struct SubtitleTimelineWorkspace: View {
     @State private var cueSnapEdges: [SnapEdge] = []
     @State private var qualityRefreshTask: Task<Void, Never>?
     @State private var waveformLoadTask: Task<Void, Never>?
+    @State private var markerCursorTime: Double?
     @State private var editingMarker: TimelineMarker?
     @State private var keyMonitor: Any?
 
@@ -238,6 +239,7 @@ struct SubtitleTimelineWorkspace: View {
         }
         .onChange(of: viewModel.mediaURL) { _, _ in
             editingMarker = nil
+            markerCursorTime = nil
             hasCommittedPlayhead = false
             reloadWaveform()
             scheduleSubtitleQualityRefresh()
@@ -771,7 +773,7 @@ struct SubtitleTimelineWorkspace: View {
 
     private var timelineMarkerMenu: some View {
         Menu {
-            Button("Thêm đánh dấu tại đầu phát · M", systemImage: "flag.fill") { addMarkerAtPlayhead() }
+            Button("Thêm đánh dấu tại trỏ chuột · M", systemImage: "flag.fill") { addMarkerAtCursor() }
             if !viewModel.timelineMarkers.isEmpty {
                 Divider()
                 ForEach(viewModel.timelineMarkers) { marker in
@@ -784,7 +786,7 @@ struct SubtitleTimelineWorkspace: View {
         }
         .menuStyle(.borderlessButton).fixedSize()
         .disabled(viewModel.mediaURL == nil)
-        .help("M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú.")
+        .help("M: đánh dấu vị trí trỏ chuột trên Timeline. Nút Đánh dấu dùng vị trí trỏ gần nhất; bấm cờ để ghi chú.")
     }
 
     private func markerLabel(_ marker: TimelineMarker) -> String {
@@ -792,10 +794,22 @@ struct SubtitleTimelineWorkspace: View {
         return SRTTimecode.format(marker.seconds) + " · " + (title.isEmpty ? L10n.string("Chưa có ghi chú") : String(title.prefix(80)))
     }
 
-    private func addMarkerAtPlayhead() {
-        let existed = viewModel.timelineMarkers.contains { abs($0.seconds - preview.currentTime) <= 0.02 }
-        guard let marker = viewModel.addTimelineMarker(at: preview.currentTime, duration: duration) else { return }
+    private func addMarkerAtCursor() {
+        guard let time = TimelineMarkerPolicy.placementTime(pointer: markerTimeUnderPointer(),
+                lastPointer: markerCursorTime, playhead: preview.currentTime, duration: duration) else { return }
+        let existed = viewModel.timelineMarkers.contains { abs($0.seconds - time) <= 0.02 }
+        guard let marker = viewModel.addTimelineMarker(at: time, duration: duration) else { return }
         if existed { editingMarker = marker }
+    }
+
+    /// Marker creation needs a real two-dimensional Timeline hit; the zoom helper
+    /// deliberately accepts horizontal projection while hovering the toolbar.
+    private func markerTimeUnderPointer() -> Double? {
+        guard let scrollView = timelineScrollView, let window = scrollView.window else { return nil }
+        let windowPoint = window.convertPoint(fromScreen: NSEvent.mouseLocation)
+        let point = scrollView.contentView.convert(windowPoint, from: nil)
+        guard scrollView.contentView.bounds.contains(point) else { return nil }
+        return rawTimelineTimeUnderPointer()
     }
 
     private var toolbarDivider: some View {
@@ -1552,6 +1566,7 @@ struct SubtitleTimelineWorkspace: View {
     }
 
     private func updateHoverPointer(at x: CGFloat) {
+        markerCursorTime = markerTimeUnderPointer() ?? max(0, min(duration, Double(x) / pixelsPerSecond))
         // Zoom vẫn neo raw mouse time riêng. Skim chỉ rời đúng pixel chuột khi
         // user chủ động bật Snap và đang ở gần playhead/đầu/đuôi một cue.
         skimViewportX = pointerXInTimelineViewport() ?? x
@@ -1833,8 +1848,8 @@ struct SubtitleTimelineWorkspace: View {
                 )
             }
 
-            if matches("msm.timeline.shortcut.marker", "m"), editingMarker == nil, viewModel.mediaURL != nil {
-                addMarkerAtPlayhead(); return nil
+            if matches("msm.timeline.shortcut.marker", "m"), editingMarker == nil, viewModel.mediaURL != nil, event.window === timelineScrollView?.window {
+                addMarkerAtCursor(); return nil
             }
             if matches("msm.timeline.shortcut.zoomIn", "command+plus") {
                 zoomIn(); return nil

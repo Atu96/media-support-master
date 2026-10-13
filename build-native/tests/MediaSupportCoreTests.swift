@@ -2358,6 +2358,10 @@ enum MediaSupportCoreTests {
     }
 
     private static func testTimelineMarkers() throws {
+        try expect(TimelineMarkerPolicy.placementTime(pointer: 4.25, lastPointer: 1, playhead: 8, duration: 10) == 4.25, "marker phải bám pointer thay vì playhead")
+        try expect(TimelineMarkerPolicy.placementTime(pointer: nil, lastPointer: 1, playhead: 8, duration: 10) == 1, "nút toolbar phải giữ vị trí trỏ gần nhất")
+        try expect(TimelineMarkerPolicy.placementTime(pointer: nil, lastPointer: nil, playhead: 8, duration: 10) == 8, "project mới chưa trỏ mới được dùng playhead")
+        try expect(TimelineMarkerPolicy.placementTime(pointer: .nan, lastPointer: 1, playhead: 8, duration: 10) == 1, "pointer hỏng không được tạo marker hỏng")
         let first = TimelineMarker(seconds: 4.25, note: "Dịch lại\n日本語 한국어 中文 🎙️")
         let early = TimelineMarker(seconds: 1)
         let bad = TimelineMarker(seconds: .nan)

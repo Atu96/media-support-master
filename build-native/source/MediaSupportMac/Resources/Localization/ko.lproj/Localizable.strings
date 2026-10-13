@@ -753,8 +753,8 @@
 /* Timeline markers */
 "Đánh dấu" = "마커";
 "Ghi chú đánh dấu" = "마커 메모";
-"Thêm đánh dấu tại đầu phát · M" = "재생 위치에 마커 추가 · M";
-"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M: 재생 위치에 마커를 추가합니다. 깃발을 클릭하면 메모가 열립니다.";
+"Thêm đánh dấu tại trỏ chuột · M" = "포인터 위치에 마커 추가 · M";
+"M: đánh dấu vị trí trỏ chuột trên Timeline. Nút Đánh dấu dùng vị trí trỏ gần nhất; bấm cờ để ghi chú." = "M: 타임라인의 포인터 위치를 표시합니다. 마커 버튼은 마지막 포인터 위치를 사용합니다. 깃발을 클릭하면 메모를 편집합니다.";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "이 위치에서 필요한 작업을 기록하세요. 예: 번역 수정, 자막 검토, 음성 확인.";
 "Chưa có ghi chú" = "메모 없음";
 "Xóa đánh dấu" = "마커 삭제";

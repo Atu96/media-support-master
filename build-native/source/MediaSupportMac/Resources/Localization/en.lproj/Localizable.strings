@@ -771,8 +771,8 @@
 /* Timeline markers */
 "Đánh dấu" = "Markers";
 "Ghi chú đánh dấu" = "Marker note";
-"Thêm đánh dấu tại đầu phát · M" = "Add marker at playhead · M";
-"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M: add a marker at the playhead. Click its flag to open the note.";
+"Thêm đánh dấu tại trỏ chuột · M" = "Add marker at pointer · M";
+"M: đánh dấu vị trí trỏ chuột trên Timeline. Nút Đánh dấu dùng vị trí trỏ gần nhất; bấm cờ để ghi chú." = "M: mark the pointer position on the Timeline. The Markers button uses the last pointer position; click a flag to edit its note.";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "Note what needs attention here, such as revising a translation, reviewing subtitles or checking a voice.";
 "Chưa có ghi chú" = "No note yet";
 "Xóa đánh dấu" = "Delete marker";

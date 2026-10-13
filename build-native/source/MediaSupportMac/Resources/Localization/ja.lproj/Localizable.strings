@@ -753,8 +753,8 @@
 /* Timeline markers */
 "Đánh dấu" = "マーカー";
 "Ghi chú đánh dấu" = "マーカーのメモ";
-"Thêm đánh dấu tại đầu phát · M" = "再生ヘッドにマーカーを追加 · M";
-"M: thêm đánh dấu tại đầu phát. Bấm cờ để mở ghi chú." = "M：再生ヘッドにマーカーを追加。旗をクリックするとメモが開きます。";
+"Thêm đánh dấu tại trỏ chuột · M" = "ポインター位置にマーカーを追加 · M";
+"M: đánh dấu vị trí trỏ chuột trên Timeline. Nút Đánh dấu dùng vị trí trỏ gần nhất; bấm cờ để ghi chú." = "M：タイムラインのポインター位置をマークします。マーカーボタンは直前の位置を使います。旗をクリックしてメモを編集します。";
 "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "この位置で必要な作業をメモします。例：翻訳の修正、字幕の確認、音声の確認。";
 "Chưa có ghi chú" = "メモなし";
 "Xóa đánh dấu" = "マーカーを削除";
