@@ -399,6 +399,7 @@ struct TimelineShortcutSettingsSheet: View {
     @AppStorage("msm.timeline.shortcut.play") private var play = "space"
     @AppStorage("msm.timeline.shortcut.back") private var back = "j"
     @AppStorage("msm.timeline.shortcut.forward") private var forward = "l"
+    @AppStorage("msm.timeline.shortcut.marker") private var marker = "m"
     @AppStorage("msm.timeline.shortcut.skim") private var skim = "s"
     @AppStorage("msm.timeline.shortcut.split") private var split = "x"
     @AppStorage("msm.timeline.shortcut.merge") private var merge = "g"
@@ -431,6 +432,7 @@ struct TimelineShortcutSettingsSheet: View {
             shortcutField("Xem toàn cảnh audio", $zoomFit)
             shortcutField("Chọn tất cả cue", $selectAll)
             shortcutField("Xóa cue đã chọn", $delete)
+            shortcutField("Thêm đánh dấu", $marker)
             shortcutField("Hoàn tác", $undo)
             shortcutField("Làm lại", $redo)
             Text("Bấm vào một ô rồi nhấn phím hoặc tổ hợp muốn gán. Command-click và Shift-click vẫn là thao tác chuột để chọn nhiều cue. Khi đang gõ nội dung cue, phím tắt Timeline tạm nhường cho văn bản.")
@@ -439,7 +441,7 @@ struct TimelineShortcutSettingsSheet: View {
             HStack {
                 Button("Khôi phục mặc định") {
                     play = "space"; back = "j"; forward = "l"
-                    skim = "s"; trimLeft = "option+left"; trimRight = "option+right"; split = "x"; merge = "g"
+                    marker = "m"; skim = "s"; trimLeft = "option+left"; trimRight = "option+right"; split = "x"; merge = "g"
                     zoomIn = "command+plus"; zoomOut = "command+minus"; zoomFit = "shift+z"
                     selectAll = "command+a"; delete = "delete"
                     undo = "command+z"; redo = "command+shift+z"

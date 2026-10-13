@@ -22,9 +22,11 @@ final class SubtitleViewModel: ObservableObject {
                 layoutReflow.cancel()
                 ocrCreate.cancelIfMediaChanged(to: mediaURL)
                 comparison.invalidate()
+                timelineMarkers = mediaURL.map { TimelineMarkerPolicy.normalized(ProjectBackupStore.load(for: $0)?.markers ?? []) } ?? []
             }
         }
     }
+    @Published var timelineMarkers: [TimelineMarker] = []
     /// Media đang chọn ở tab Tạo sub tự động — tách khỏi dự án active.
     @Published var whisperDraftMediaURL: URL?
     /// Media đang chọn ở tab Khớp văn bản gốc.

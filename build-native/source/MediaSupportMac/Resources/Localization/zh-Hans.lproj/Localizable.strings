@@ -749,3 +749,16 @@
 "Chưa đủ 2 dòng" = "尚未分为两行";
 
 "Sửa các cue lệch số dòng" = "修复行数不符的字幕";
+
+/* Timeline markers */
+"Đánh dấu" = "标记";
+"Ghi chú đánh dấu" = "标记备注";
+"Thêm đánh dấu tại đầu phát · M" = "在播放头处添加标记 · M";
+"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M：在播放头处添加标记。双击标记可编辑备注。";
+"Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "记录此位置需要处理的事项，例如修改翻译、检查字幕或检查配音。";
+"Chưa có ghi chú" = "暂无备注";
+"Xóa đánh dấu" = "删除标记";
+"Lưu ghi chú" = "保存备注";
+"Sửa ghi chú" = "编辑备注";
+"Thêm đánh dấu" = "添加标记";
+"Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "无法保存备注。请检查项目文件夹的写入权限。";

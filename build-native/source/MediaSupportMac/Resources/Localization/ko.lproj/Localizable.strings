@@ -749,3 +749,16 @@
 "Chưa đủ 2 dòng" = "아직 2줄이 아님";
 
 "Sửa các cue lệch số dòng" = "줄 수가 맞지 않는 자막 수정";
+
+/* Timeline markers */
+"Đánh dấu" = "마커";
+"Ghi chú đánh dấu" = "마커 메모";
+"Thêm đánh dấu tại đầu phát · M" = "재생 위치에 마커 추가 · M";
+"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M: 재생 위치에 마커를 추가합니다. 마커를 더블 클릭하면 메모를 편집합니다.";
+"Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "이 위치에서 필요한 작업을 기록하세요. 예: 번역 수정, 자막 검토, 음성 확인.";
+"Chưa có ghi chú" = "메모 없음";
+"Xóa đánh dấu" = "마커 삭제";
+"Lưu ghi chú" = "메모 저장";
+"Sửa ghi chú" = "메모 편집";
+"Thêm đánh dấu" = "마커 추가";
+"Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "메모를 저장할 수 없습니다. 프로젝트 폴더의 쓰기 권한을 확인하세요.";

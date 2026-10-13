@@ -45,6 +45,7 @@ SOURCES=(
     "$SRC/Infrastructure/Translation/SRTEnglishSentenceSplitter.swift"
     "$SRC/Infrastructure/Translation/SRTSegmentEditor.swift"
     "$SRC/Domain/Models/TimelineCueSelection.swift"
+    "$SRC/Domain/Models/TimelineMarker.swift"
     "$SRC/Domain/Models/GroqConnectionResponseDecoder.swift"
     "$SRC/Domain/Models/GroqRateLimitHeaderDecoder.swift"
     "$SRC/Infrastructure/Translation/SubtitleEditHistory.swift"

@@ -767,3 +767,16 @@
 "Chưa đủ 2 dòng" = "Chưa đủ 2 dòng";
 
 "Sửa các cue lệch số dòng" = "Sửa các cue lệch số dòng";
+
+/* Timeline markers */
+"Đánh dấu" = "Đánh dấu";
+"Ghi chú đánh dấu" = "Ghi chú đánh dấu";
+"Thêm đánh dấu tại đầu phát · M" = "Thêm đánh dấu tại đầu phát · M";
+"M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú." = "M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú.";
+"Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng." = "Ghi lại việc cần làm ở vị trí này, ví dụ: dịch lại, rà phụ đề hoặc kiểm tra giọng.";
+"Chưa có ghi chú" = "Chưa có ghi chú";
+"Xóa đánh dấu" = "Xóa đánh dấu";
+"Lưu ghi chú" = "Lưu ghi chú";
+"Sửa ghi chú" = "Sửa ghi chú";
+"Thêm đánh dấu" = "Thêm đánh dấu";
+"Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án." = "Không lưu được ghi chú. Hãy kiểm tra quyền ghi thư mục dự án.";

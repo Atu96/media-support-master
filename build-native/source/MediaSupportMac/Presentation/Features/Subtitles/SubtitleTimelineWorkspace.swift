@@ -62,6 +62,7 @@ struct SubtitleTimelineWorkspace: View {
     @State private var cueSnapEdges: [SnapEdge] = []
     @State private var qualityRefreshTask: Task<Void, Never>?
     @State private var waveformLoadTask: Task<Void, Never>?
+    @State private var editingMarker: TimelineMarker?
     @State private var keyMonitor: Any?
 
     private var duration: Double {
@@ -236,6 +237,7 @@ struct SubtitleTimelineWorkspace: View {
             isShortcutSheetOpen = true
         }
         .onChange(of: viewModel.mediaURL) { _, _ in
+            editingMarker = nil
             hasCommittedPlayhead = false
             reloadWaveform()
             scheduleSubtitleQualityRefresh()
@@ -300,6 +302,12 @@ struct SubtitleTimelineWorkspace: View {
         }
         .sheet(isPresented: $isStyleSheetOpen) { SubtitleTimelineStyleSheet(viewModel: viewModel) }
         .sheet(isPresented: $isShortcutSheetOpen) { TimelineShortcutSettingsSheet() }
+        .sheet(item: $editingMarker) { marker in
+            let media = viewModel.mediaURL
+            TimelineMarkerNoteSheet(marker: marker,
+                save: { note in guard viewModel.mediaURL == media else { return false }; return viewModel.updateTimelineMarker(marker.id, note: note) },
+                delete: { guard viewModel.mediaURL == media else { return false }; return viewModel.removeTimelineMarker(marker.id) })
+        }
     }
 
     private var workspaceHeader: some View {
@@ -750,6 +758,7 @@ struct SubtitleTimelineWorkspace: View {
             }
             toolbarDivider
             subtitleExportMenu
+            timelineMarkerMenu
             Spacer(minLength: 10)
         }
         .padding(.horizontal, 10)
@@ -758,6 +767,35 @@ struct SubtitleTimelineWorkspace: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(AppTheme.divider).frame(height: AppTheme.hairlineWidth)
         }
+    }
+
+    private var timelineMarkerMenu: some View {
+        Menu {
+            Button("Thêm đánh dấu tại đầu phát · M", systemImage: "bookmark.fill") { addMarkerAtPlayhead() }
+            if !viewModel.timelineMarkers.isEmpty {
+                Divider()
+                ForEach(viewModel.timelineMarkers) { marker in
+                    Button(markerLabel(marker)) { editingMarker = marker }
+                }
+            }
+        } label: {
+            Label("Đánh dấu", systemImage: "bookmark")
+                .font(AppFont.editorLabel).padding(.horizontal, 9).frame(height: 28)
+        }
+        .menuStyle(.borderlessButton).fixedSize()
+        .disabled(viewModel.mediaURL == nil)
+        .help("M: thêm đánh dấu tại đầu phát. Bấm đúp đánh dấu để sửa ghi chú.")
+    }
+
+    private func markerLabel(_ marker: TimelineMarker) -> String {
+        let title = marker.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return SRTTimecode.format(marker.seconds) + " · " + (title.isEmpty ? L10n.string("Chưa có ghi chú") : String(title.prefix(80)))
+    }
+
+    private func addMarkerAtPlayhead() {
+        let existed = viewModel.timelineMarkers.contains { abs($0.seconds - preview.currentTime) <= 0.02 }
+        guard let marker = viewModel.addTimelineMarker(at: preview.currentTime, duration: duration) else { return }
+        if existed { editingMarker = marker }
     }
 
     private var toolbarDivider: some View {
@@ -1144,6 +1182,28 @@ struct SubtitleTimelineWorkspace: View {
         return ZStack(alignment: .topLeading) {
             TimelineRuler(duration: duration, pixelsPerSecond: pixelsPerSecond, width: width)
                 .equatable().contentShape(Rectangle()).gesture(timelinePointerDrag)
+
+            ForEach(viewModel.timelineMarkers) { marker in
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.accentOrange)
+                    .frame(width: 18, height: 22).contentShape(Rectangle())
+                    .gesture(TapGesture(count: 2).exclusively(before: TapGesture(count: 1)).onEnded { result in
+                        switch result {
+                        case .first: editingMarker = marker
+                        case .second: hasCommittedPlayhead = true; seek(marker.seconds)
+                        }
+                    })
+                    .contextMenu {
+                        Button("Sửa ghi chú") { editingMarker = marker }
+                        Button("Xóa đánh dấu", role: .destructive) { _ = viewModel.removeTimelineMarker(marker.id) }
+                    }
+                    .help(markerLabel(marker))
+                    .accessibilityLabel(markerLabel(marker))
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { editingMarker = marker }
+                    .offset(x: min(width - 18, max(0, CGFloat(marker.seconds * pixelsPerSecond) - 9)), y: 9)
+            }
 
             SubtitleTimelineCueLane(
                 segments: viewModel.segments,
@@ -1776,6 +1836,9 @@ struct SubtitleTimelineWorkspace: View {
                 )
             }
 
+            if matches("msm.timeline.shortcut.marker", "m"), editingMarker == nil, viewModel.mediaURL != nil {
+                addMarkerAtPlayhead(); return nil
+            }
             if matches("msm.timeline.shortcut.zoomIn", "command+plus") {
                 zoomIn(); return nil
             }

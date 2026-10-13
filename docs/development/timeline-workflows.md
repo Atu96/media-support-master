@@ -82,3 +82,9 @@ Xuất video phụ đề/lồng tiếng vẫn ở **Cài đặt xuất** trên t
 ## Đã kiểm tra và phần còn cần thử
 
 Đợt sửa QC/vị trí/OCR đã qua90 kiểm tra core,24 đối chiếu XML, bộ native và các locale giao diện. Có clip mẫu kiểm vị trí một/hai dòng và fixture OCR5 ngôn ngữ. Việc đổi nhãn cuối cùng chỉ thay giao diện, được kiểm localization và build/startup app TEST; không chạy lại API. Chưa có corpus video người dùng lớn, kiểm mọi OS cũ hoặc chứng nhận từng thao tác menu bằng UI tự động. Quy trình ở [build và test](build-and-test.md).
+## Timeline markers and notes
+
+Use **Markers → Add marker at playhead** or press **M** to mark a position, even before transcription. Click a marker to seek there; double-click it to edit a note such as “revise translation”, “review subtitles” or “check voice”. Press M again at the same paused position to open its note. Right-click a marker to edit/delete it, or use the Markers menu to find existing notes. The M shortcut can be reassigned in Timeline Shortcuts and does not intercept typing in an editor.
+
+Markers are saved with the project and restored when that media is reopened. They are annotations: subtitle/dubbing cues, timing, audio and export contents do not change. Notes are stored locally as text/time metadata; no OCR, audio decode or API call is needed. Existing projects without a marker field remain readable. Saving a note uses an atomic metadata update; write failures keep the editor open.
+

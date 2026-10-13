@@ -128,6 +128,7 @@ enum MediaSupportCoreTests {
         run("Dubbing fingerprint và fit cue ổn định", testDubbingModels)
         run("Nút lồng cue chỉ bật khi selection và provider hợp lệ", testDubbingToolbarAvailability)
         run("Chọn giọng Maziao luôn đồng bộ đúng mô hình", testMaziaoVoiceSelectionPolicy)
+        run("Marker giữ vị trí/Unicode, dedupe và không nhận time hỏng", testTimelineMarkers)
         await runAsync("Provider đổi/xóa key không nhận catalog cũ", DubbingRefactorTests.catalogReplacement)
         await runAsync("Hạn mức cũ không ghi đè tài khoản mới", DubbingRefactorTests.usageReplacement)
         run("DUB interval giữ overlap/biên/seek/fallback", DubbingRefactorTests.playbackParity)
@@ -2354,6 +2355,20 @@ enum MediaSupportCoreTests {
             ),
             "đang render thì không được khởi tạo thêm lượt lồng toàn bộ"
         )
+    }
+
+    private static func testTimelineMarkers() throws {
+        let first = TimelineMarker(seconds: 4.25, note: "Dịch lại\n日本語 한국어 中文 🎙️")
+        let early = TimelineMarker(seconds: 1)
+        let bad = TimelineMarker(seconds: .nan)
+        let list = TimelineMarkerPolicy.normalized([first, bad, first, early, .init(seconds: -1)])
+        try expect(list == [early, first], "marker mất thứ tự/note hoặc nhận ID/time hỏng")
+        let restored = try JSONDecoder().decode([TimelineMarker].self, from: JSONEncoder().encode(list))
+        try expect(restored == list, "marker note/ID/time không roundtrip")
+        try expect(TimelineMarkerPolicy.create(at: 4.25, duration: 10, existing: list) == first, "M tại cùng frame tạo marker trùng")
+        try expect(TimelineMarkerPolicy.create(at: 20, duration: 10, existing: [])?.seconds == 10, "marker vượt duration")
+        try expect(TimelineMarkerPolicy.create(at: -4, duration: 10, existing: [])?.seconds == 0, "marker âm không clamp")
+        try expect(TimelineMarkerPolicy.create(at: .infinity, duration: 10, existing: []) == nil, "marker infinity được tạo")
     }
 
     private static func testMaziaoVoiceSelectionPolicy() throws {

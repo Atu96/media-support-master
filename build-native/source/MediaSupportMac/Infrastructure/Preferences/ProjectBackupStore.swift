@@ -35,6 +35,7 @@ struct ProjectBackupManifest: Codable {
     var burnStyle: SubtitleBurnStyle
     var createdAt: Date
     var updatedAt: Date
+    var markers: [TimelineMarker]? = nil
 }
 
 struct ProjectBackupIndex: Codable {
@@ -498,6 +499,29 @@ enum ProjectBackupStore {
         writeManifest(manifest, media: media)
         finalizeCoLocatedCleanup(media: media)
         updateIndex()
+    }
+
+    /// Metadata-only atomic note update; no transcript/export rewrite.
+    static func saveMarkers(_ markers: [TimelineMarker], for media: URL) throws {
+        ensureProjectDir(for: media)
+        let existing = load(for: media)
+        if existing == nil, FileManager.default.fileExists(atPath: manifestURL(for: media).path) {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        var manifest = existing ?? freshManifest(for: media)
+        manifest.markers = TimelineMarkerPolicy.normalized(markers)
+        manifest.updatedAt = Date()
+        let data = try JSONEncoder().encode(manifest)
+        try data.write(to: manifestURL(for: media), options: .atomic)
+        var index = (try? loadIndex()) ?? ProjectBackupIndex(projects: [])
+        let entry = ProjectBackupIndexEntry(id: manifest.id, mediaPath: media.path,
+            displayName: media.lastPathComponent, updatedAt: manifest.updatedAt, sizeBytes: projectSize(for: media))
+        if let position = index.projects.firstIndex(where: { $0.id == manifest.id }) { index.projects[position] = entry }
+        else { index.projects.append(entry) }
+        // Manifest is the source of truth; a failed recent-list update must not lose the note.
+        if let indexData = try? JSONEncoder().encode(index) {
+            try? indexData.write(to: backupRoot().appendingPathComponent(indexFileName), options: .atomic)
+        }
     }
 
     static func clearTranslatedTranscript(for media: URL) {

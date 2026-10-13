@@ -246,6 +246,7 @@ extension SubtitleViewModel {
     func clearProjectSession() {
         guard let mediaURL else { return }
         ProjectBackupStore.deleteBackup(for: mediaURL)
+        timelineMarkers = []
         sessionRestored = false
     }
     func loadTranscript(
@@ -421,6 +422,7 @@ extension SubtitleViewModel {
 
     func restoreProjectSession(for media: URL) -> Bool {
         guard let saved = ProjectBackupStore.load(for: media) else { return false }
+        timelineMarkers = TimelineMarkerPolicy.normalized(saved.markers ?? [])
 
         targetLang = saved.prefs.targetLang
         sourceLang = saved.prefs.sourceLang

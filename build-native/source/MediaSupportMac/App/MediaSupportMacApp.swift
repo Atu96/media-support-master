@@ -5,6 +5,11 @@ import AppKit
 enum MediaSupportMacLauncher {
     static func main() {
         if Bundle.main.object(forInfoDictionaryKey: "MediaSupportBuildChannel") as? String == "test",
+           ProcessInfo.processInfo.environment["MSM_TIMELINE_MARKER_SMOKE"] == "1" {
+            do { try NativeTimelineMarkerSmoke.run(); exit(0) }
+            catch { print("TIMELINE_MARKER_SMOKE_FAILED"); exit(1) }
+        }
+        if Bundle.main.object(forInfoDictionaryKey: "MediaSupportBuildChannel") as? String == "test",
            ProcessInfo.processInfo.environment["MSM_ALLOW_PAID_MAZIAO_PROBE"] == "1",
            let path = ProcessInfo.processInfo.environment["MSM_MAZIAO_CONTEXT_PROBE_DIR"] {
             Task {
