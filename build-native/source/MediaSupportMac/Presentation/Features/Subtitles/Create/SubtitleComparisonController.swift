@@ -89,15 +89,18 @@ final class SubtitleComparisonController: ObservableObject {
     }
 
     func noteCompletion(_ source: SubtitleEvidenceSource) {
-        pendingOffer = source
+        // Only primary OCR invites an audio cross-check; audio completion also
+        // clears any deferred OCR offer from an earlier result.
+        pendingOffer = source == .ocr ? .ocr : nil
+        guard pendingOffer != nil else { return }
         session.subtitleEvidenceCompletion = UUID()
     }
 
     func presentOfferIfEligible() {
         guard !suppressOffers, hasVideo, canStart, !session.subtitleComparisonPresented,
-              let completed = pendingOffer else { return }
+              pendingOffer == .ocr else { return }
         pendingOffer = nil
-        open(source: completed == .audio ? .ocr : .audio, offer: true)
+        open(source: .audio, offer: true)
     }
 
     func open(source: SubtitleEvidenceSource, offer: Bool = false) {
@@ -245,6 +248,7 @@ final class SubtitleComparisonController: ObservableObject {
                     Double(VideoPreviewFrame.classify(displaySize: VideoGeometryProbe.displaySize(for: media)).referencePixelSize.width)
                         * Double(snap.style.boxMaxWidthRatio) - 24),
                 maxLines: snap.wrap.maxLines,
+                requiresTwoLines: snap.wrap.maxLines == 2,
                 preferredCharactersPerLine: SubtitleWrapStyle.effectiveMaxCharsPerLine(base: snap.wrap.maxCharsPerLine, fontSize: snap.style.fontSize),
                 topLineRatio: snap.wrap.topLineRatio.topOverBottom, explicitBreakPolicy: .automatic)
             return replacement.map { cue in

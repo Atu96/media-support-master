@@ -52,7 +52,7 @@
 "Cue và sửa nội dung" = "큐 보기 및 편집";
 "Kiểu sub" = "자막 스타일";
 "Chỉnh kiểu phụ đề" = "자막 스타일 편집";
-"Chép lời" = "받아쓰기";
+"Chép lời" = "음성 받아쓰기";
 "Chép lời từ media" = "미디어 받아쓰기";
 "Kịch bản" = "스크립트";
 "Tạo phụ đề từ văn bản" = "스크립트에서 자막 만들기";
@@ -595,7 +595,7 @@
 "Quét cục bộ, không cần key. Quét kỹ hơn lấy nhiều khung hình hơn; chữ quá ngắn hoặc mờ có thể cần sửa lại." = "키 없이 기기에서 처리합니다. 정밀 스캔은 더 많은 프레임을 확인합니다. 짧거나 흐린 글자는 수정이 필요할 수 있습니다.";
 "Đang quét %d%% · %d cue" = "스캔 중 %d%% · 자막 %d개";
 "Dừng quét" = "스캔 중지";
-"Quét phụ đề" = "자막 스캔";
+"Quét phụ đề" = "자막 읽기";
 "Vùng chữ cần quét" = "스캔할 글자 영역";
 "OCR cần video có hình ảnh." = "OCR에는 영상이 있는 동영상이 필요합니다.";
 "Không tìm thấy phụ đề trong vùng đã chọn. Hãy chọn lại vùng chữ." = "선택한 영역에서 자막을 찾지 못했습니다. 글자 영역을 다시 선택하세요.";
@@ -644,7 +644,7 @@
 "Làm mới danh sách giọng" = "음성 목록 새로 고침";
 "Trung tính" = "중성";
 "Đang sắp xếp phụ đề…" = "자막을 정리하는 중…";
-"Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo." = "기존 자막을 정리하고 다음 받아쓰기에도 이 레이아웃을 사용합니다.";
+"1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có." = "1줄은 한 줄로 표시합니다. 2줄은 안전한 위치에서 나누며, 나눌 수 없는 자막은 QC에 표시합니다. 일본어는 기존 배치를 유지합니다.";
 
 "Giới thiệu" = "앱 정보";
 "Thông tin ứng dụng và ủng hộ tác giả" = "앱 정보 및 개발자 후원";
@@ -694,7 +694,7 @@
 "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng." = "보조 버전을 만들고 차이를 확인한 후 적용할 내용을 선택합니다.";
 "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?" = "자막이 준비되었습니다. 다른 소스로 확인할까요?";
 "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh." = "영상에 자막이 삽입되어 있다면 OCR로 문구, 이름, 지명을 확인할 수 있습니다.";
-"Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR." = "음성 인식으로 OCR에서 흐리거나 누락된 텍스트를 확인할 수 있습니다.";
+"Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng." = "음성을 받아써서 읽어 들인 자막의 누락되거나 잘못 인식된 단어를 확인하세요. 적용 전에 차이를 확인하고 올바른 내용을 선택하세요.";
 "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng." = "현재 버전은 유지됩니다. 차이를 확인하고 적용할 내용을 선택하세요.";
 "Không nhắc lại" = "다시 알리지 않기";
 "Chọn vùng chữ" = "텍스트 영역 선택";
@@ -745,3 +745,7 @@
 "Lồng tiếng toàn bộ" = "전체 더빙";
 "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "선택한 자막을 포함한 문단 전체를 인접 부분과 함께 더빙합니다.";
 "Lồng tiếng cho các phần phụ đề đã chọn." = "선택한 자막 부분을 더빙합니다.";
+
+"Chưa đủ 2 dòng" = "아직 2줄이 아님";
+
+"Sửa các cue lệch số dòng" = "줄 수가 맞지 않는 자막 수정";

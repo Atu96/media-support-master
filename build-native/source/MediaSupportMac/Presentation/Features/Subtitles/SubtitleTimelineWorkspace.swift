@@ -61,6 +61,7 @@ struct SubtitleTimelineWorkspace: View {
     @State private var qualityIssues: [SubtitleQualityIssue] = []
     @State private var cueSnapEdges: [SnapEdge] = []
     @State private var qualityRefreshTask: Task<Void, Never>?
+    @State private var waveformLoadTask: Task<Void, Never>?
     @State private var keyMonitor: Any?
 
     private var duration: Double {
@@ -219,7 +220,7 @@ struct SubtitleTimelineWorkspace: View {
         workspaceContent.onAppear {
             installShortcuts()
             reloadWaveform()
-            refreshSubtitleQuality()
+            scheduleSubtitleQualityRefresh()
             refreshCueSnapEdges()
             synchronizeDubbingIfEnabled()
             synchronizeDubbingPreview()
@@ -227,6 +228,8 @@ struct SubtitleTimelineWorkspace: View {
         .onDisappear {
             removeShortcuts()
             qualityRefreshTask?.cancel()
+            waveformLoadTask?.cancel()
+            waveformLoadTask = nil
             dubbingSession.synchronizePreviewPlayback(at: preview.currentTime, isPlaying: false)
         }
         .onReceive(NotificationCenter.default.publisher(for: .openTimelineShortcutSettings)) { _ in
@@ -374,7 +377,7 @@ struct SubtitleTimelineWorkspace: View {
             fileRow(viewModel.srtURL, icon: "captions.bubble", remove: removeSRT)
             if viewModel.mediaURL != nil && !isAudioOnlyMedia {
                 AppPillButton(
-                    title: "Lấy sub từ video",
+                    title: "Quét phụ đề",
                     icon: "text.viewfinder",
                     tint: AppTheme.accentBlue,
                     filled: false,
@@ -665,7 +668,7 @@ struct SubtitleTimelineWorkspace: View {
             Spacer(minLength: 10)
             HStack(spacing: AppTheme.controlGap) {
                 whisperToolButton
-                timelineToolButton("text.viewfinder", title: "Lấy sub từ video", active: isOCRSheetOpen, help: "Đọc chữ đã dính trong hình video bằng OCR cục bộ.", action: beginOCR)
+                timelineToolButton("text.viewfinder", title: "Quét phụ đề", active: isOCRSheetOpen, help: "Đọc chữ đã dính trong hình video bằng OCR cục bộ.", action: beginOCR)
                     .disabled(!canOpenOCR)
                     .accessibilityIdentifier("subtitle.ocr.toolbar")
                 timelineToolButton("doc.text", title: "Tạo sub từ văn bản", active: false, help: "Nhập hoặc dán kịch bản, rồi khớp theo lời nói trong video/audio để tạo phụ đề. Giữ nguyên nội dung văn bản.") { beginScriptSubtitle() }
@@ -787,7 +790,7 @@ struct SubtitleTimelineWorkspace: View {
     }
 
     private var qualityLayoutCueIDs: Set<Int> {
-        Set(qualityIssues.filter { $0.code == .tooManyLines || $0.code == .lineOverflow }.map(\.cueID))
+        Set(qualityIssues.filter { $0.code == .tooManyLines || $0.code == .tooFewLines || $0.code == .lineOverflow }.map(\.cueID))
     }
 
     private var subtitleQualityMenu: some View {
@@ -798,7 +801,7 @@ struct SubtitleTimelineWorkspace: View {
                 if viewModel.isApplyingTranscriptLayout {
                     Text(L10n.string("Đang sắp xếp phụ đề…"))
                 }
-                Button(L10n.string("Sửa các cue vượt số dòng")) {
+                Button(L10n.string("Sửa các cue lệch số dòng")) {
                     cueSelection.clear()
                     dubbingSelection.clear()
                     viewModel.previewFocusSegmentID = nil
@@ -810,7 +813,7 @@ struct SubtitleTimelineWorkspace: View {
                 ForEach(qualityIssues.prefix(30)) { issue in
                     Menu {
                         Button(L10n.string("Xem cue")) { focusQualityIssue(issue) }
-                        if issue.code == .tooManyLines || issue.code == .lineOverflow {
+                        if issue.code == .tooManyLines || issue.code == .tooFewLines || issue.code == .lineOverflow {
                             Button(L10n.string("Sửa bố cục cue")) {
                                 focusQualityIssue(issue)
                                 viewModel.repairQualityCueLayout(ids: [issue.cueID])
@@ -873,23 +876,6 @@ struct SubtitleTimelineWorkspace: View {
         qualityIssues.contains(where: { $0.severity == .error }) ? AppTheme.accentRed : AppTheme.accentOrange
     }
 
-    private func refreshSubtitleQuality() {
-        let detected = SubtitleQualityAnalyzer.analyze(
-            viewModel.segments,
-            configuration: viewModel.subtitleLayoutConfiguration(explicitBreakPolicy: .preserve)
-        )
-        // CPS, thời lượng và phép đo tràn phụ thuộc nội dung/phông/video nên chỉ
-        // là gợi ý. Toolbar chỉ báo ba lỗi có kết luận khách quan, tránh false positive.
-        qualityIssues = detected.filter {
-            switch $0.code {
-            case .emptyText, .tooManyLines, .overlap:
-                return true
-            case .lineOverflow, .tooFast, .tooShort, .tooLong:
-                return false
-            }
-        }
-    }
-
     private func scheduleSubtitleQualityRefresh() {
         qualityRefreshTask?.cancel()
         let segments = viewModel.segments
@@ -898,18 +884,19 @@ struct SubtitleTimelineWorkspace: View {
             // Slider font/box phát nhiều event; chỉ đo glyph sau nhịp chỉnh cuối.
             try? await Task.sleep(nanoseconds: 140_000_000)
             guard !Task.isCancelled else { return }
-            let detected = await Task.detached(priority: .utility) {
+            let worker = Task.detached(priority: .utility) {
                 SubtitleQualityAnalyzer.analyze(
                     segments,
                     configuration: configuration
                 )
-            }.value
+            }
+            let detected = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
             guard !Task.isCancelled else { return }
             // CPS, thời lượng và phép đo tràn là gợi ý; toolbar chỉ đưa các lỗi
             // khách quan lên trước để tránh cảnh báo giả khi người dùng kéo style.
             qualityIssues = detected.filter {
                 switch $0.code {
-                case .emptyText, .tooManyLines, .overlap:
+                case .emptyText, .tooManyLines, .tooFewLines, .overlap:
                     return true
                 case .lineOverflow, .tooFast, .tooShort, .tooLong:
                     return false
@@ -930,7 +917,7 @@ struct SubtitleTimelineWorkspace: View {
                 Image(systemName: viewModel.isRunningWhisper ? "waveform.badge.mic" : "waveform.badge.mic")
                     .font(.system(size: AppTheme.compactIconSize, weight: .semibold))
                     .symbolEffect(.variableColor.iterative, options: .repeating, isActive: viewModel.isRunningWhisper && !reduceMotion)
-                Text(L10n.string("Lấy sub từ âm thanh"))
+                Text(L10n.string("Chép lời"))
                     .font(AppFont.editorLabel)
                 if viewModel.isRunningWhisper {
                     Text("\(viewModel.whisperProgressPercent)%")
@@ -945,7 +932,7 @@ struct SubtitleTimelineWorkspace: View {
         .buttonStyle(TimelineToolbarButtonStyle(isActive: viewModel.isRunningWhisper))
         .disabled(viewModel.mediaURL == nil || runner.isRunning || viewModel.isApplyingTranscriptLayout)
         .help(viewModel.isRunningWhisper ? "Đang chép lời: \(viewModel.whisperProgressPercent)%" : L10n.string("Nghe lời nói trong video hoặc audio để tạo phụ đề."))
-        .accessibilityLabel(viewModel.isRunningWhisper ? "Đang chép lời \(viewModel.whisperProgressPercent) phần trăm" : L10n.string("Lấy sub từ âm thanh"))
+        .accessibilityLabel(viewModel.isRunningWhisper ? "Đang chép lời \(viewModel.whisperProgressPercent) phần trăm" : L10n.string("Chép lời"))
     }
 
     private func timelineToolButton(
@@ -1704,14 +1691,20 @@ struct SubtitleTimelineWorkspace: View {
         return bestTime
     }
     private func reloadWaveform() {
+        waveformLoadTask?.cancel()
+        waveformLoadTask = nil
         peaks = []
         waveformDuration = 0
         waveformContentID = UUID()
+        let requestID = waveformContentID
         guard let url = viewModel.mediaURL else { return }
-        Task {
+        waveformLoadTask = Task {
             // Service lấy duration trước rồi tự chọn peak density; không phụ thuộc
             // AVPlayer đã kịp publish duration hay chưa.
-            if let result = try? await WaveformPeakService.loadPeaks(url: url) {
+            let result = try? await WaveformPeakService.loadPeaks(url: url)
+            guard !Task.isCancelled, waveformContentID == requestID, viewModel.mediaURL == url else { return }
+            waveformLoadTask = nil
+            if let result {
                 guard viewModel.mediaURL == url else { return }
                 peaks = result.peaks
                 waveformDuration = result.duration

@@ -1,10 +1,12 @@
 # Subtitle comparison and original text priority
 
-Available in the current source/TEST build. The published 1.0.1 installer predates this workflow.
+Available in the current source/local-build build. The published 1.0.1 installer predates this workflow.
 
 ## Optional second source
 
-After a successful audio transcription of a video, the app offers OCR if the picture contains subtitles. After a successful OCR scan, it offers speech recognition. The OCR offer appears after closing its scan sheet. **Later** dismisses the offer; **Do not remind me again** persists across launches. No offer follows the supplementary scan or application, and audio-only files do not offer OCR. The toolbar **Compare** menu remains available even with reminders disabled.
+Primary **Transcribe** detects the spoken language independently of OCR, scripts, or a restored project's subtitle-language context. Screen subtitles may be a translation; their language must not force audio recognition. This correction is a source/local-build update after 1.0.1-preview.1.
+
+After a successful **Scan subtitles** OCR scan, closing its sheet offers **Transcribe** to check missing or misread words. No offer follows a primary audio transcription. **Later** dismisses the offer; **Do not remind me again** persists across launches. No offer follows the supplementary scan or application, and audio-only files do not receive this OCR-completion offer. The toolbar **Compare** menu remains available even with reminders disabled.
 
 OCR uses the existing local region-selection/scan workflow and its 2/4 fps, single-worker budget. Audio comparison explicitly offers Groq cloud (uses API quota after **Get additional version**) or the already installed Whisper Offline model. No recognition starts from an offer alone and there is no automatic paid fallback.
 

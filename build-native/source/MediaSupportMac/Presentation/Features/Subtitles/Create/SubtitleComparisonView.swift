@@ -76,7 +76,7 @@ struct SubtitleComparisonView: View {
             Text("Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?").font(AppFont.body)
             Text(L10n.string(controller.source == .ocr
                 ? "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh."
-                : "Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR."))
+                : "Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng."))
                 .font(AppFont.caption).foregroundStyle(AppTheme.mutedText).fixedSize(horizontal: false, vertical: true)
             Text("Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng.")
                 .font(AppFont.caption).foregroundStyle(AppTheme.mutedText)

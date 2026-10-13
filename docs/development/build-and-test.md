@@ -2,11 +2,13 @@
 
 ## Subtitle comparison and original text priority
 
+The packaged comparison fixture also reproduces a Chinese OCR/restored subtitle context with a fake English speech result. It checks the primary controller sends `auto` to its engine spy and updates the completed transcript's language to English. Expected additional marker: `SPEECH_LANGUAGE_SMOKE_OK`. Backup and one-shot offline preferences are process-local overrides; fixtures use only temporary files and no provider credentials/API.
+
 The paragraph DUB smoke also reports `latestTiming=kept`: editing SUB timing while generation is in progress must use the latest timeline projection at completion. Inspect the focused hook's markers together with the full offline gate; it does not certify every UI click.
 
 The no-key `MSM_DUBBING_OPTIMIZATION_SMOKE_DIR` hook also expects `MAZIAO_CONTEXT_SMOKE_OK`: selected SUB cue expands to its full paragraph, SUB is unchanged, provider model IDs remain unmodified, cache/rates survive renumbering, deletion stays silent across renumbering and cancellation drains. Core fixtures cover context budgets/Unicode/gaps/QC rejection/cache scope. For a separate user-authorized paid contrast test, both `MSM_ALLOW_PAID_MAZIAO_PROBE=1` and `MSM_MAZIAO_CONTEXT_PROBE_DIR=<fresh temp directory>` are required; it uses at most500 fixed sample characters total, the configured Maziao voice/model and two tasks (one paragraph/four short parts). Samples are exported at1× for listening and file validation is not a quality judgment. It requires readable Keychain credentials; failure before credential load sends no TTS request. Do not enable this paid hook during build/offline QA.
 
-Core fixtures cover explicit time-group choices, missing/one-to-many cues, invalid times, stable IDs and conservative existing-cue script mapping across five languages. For the packaged no-key fake-session check, set `MSM_SUBTITLE_COMPARISON_SMOKE_DIR` to a fresh temporary directory and run the TEST bundle's `Contents/MacOS/MediaSupportMac`. Expected marker: `COMPARISON_SMOKE_OK` with private staging, explicit choice, Undo, cancellation/stale preservation, one-time/suppressible offers and script text/timing preservation. Release ignores this hook. It does not initialize the app UI, touch personal projects, read Keychain or call cloud services. The native OCR and API service contracts have their separate gates; UI clicks and real-media accuracy require focused review. See [workflow](subtitle-comparison.md).
+Core fixtures cover explicit time-group choices, missing/one-to-many cues, invalid times, stable IDs and conservative existing-cue script mapping across five languages. For the packaged no-key fake-session check, run `./build-native/run-native-fixtures.command` against the installed main app. Expected marker: `COMPARISON_SMOKE_OK` with private staging, explicit choice, Undo, cancellation/stale preservation, OCR-only audio offers, stale-offer clearing after transcription, suppression/manual access and script text/timing preservation. Release ignores this hook. It does not initialize the app UI, touch personal projects, read Keychain or call cloud services. The native OCR and API service contracts have their separate gates; UI clicks and real-media accuracy require focused review. See [workflow](subtitle-comparison.md).
 
 ## Requirements
 
@@ -19,14 +21,17 @@ Core fixtures cover explicit time-group choices, missing/one-to-many cues, inval
 From the checkout root:
 
 ```sh
+./build-native/install-applications.command
+# Optional standalone checks:
 ./build-native/test.command
-./build-native/build.command
-./build-native/export-test-app.command
+./build-native/run-native-fixtures.command
 ```
 
 `test.command` covers pure Swift models, subtitle layout/timing, provider fixtures, local audio operations, native shaping, localization, packaging, FCPXML, and script alignment. It compiles temporary outputs under `build-native/.test-out`.
 
-`export-test-app.command` builds and stamps a TEST app under `dist/test`. `relaunch-test-app.command` additionally stops existing MediaSupportMac processes and opens that exact bundle; use it when intentionally replacing a running TEST instance. It preserves preferences by default.
+`install-applications.command` is the normal development workflow: offline QA → release-channel build with embedded Runtime/tools/notices → disposable native fixtures → staged signature/hash validation → graceful shutdown → atomic replacement and startup at **/Applications/Media Support Master.app**. It keeps one previous main bundle for rollback and removes the known legacy `dist/test` bundle only after successful startup. Credentials, models, preferences and projects are not reset. `--qa-verified` is for an operator who has just passed offline QA on unchanged runtime source.
+
+`export-test-app.command` and `relaunch-test-app.command` are compatibility aliases to the main installer. They no longer create or install a persistent TEST app. `run-native-fixtures.command` creates a temporary test-channel copy without launching/registering it as a user app, runs the no-key comparison/speech-language fixture, and deletes the copy on exit; its log is `_work/qa-latest/native-comparison.log`. Installed main apps ignore TEST-only environment hooks. Other low-level hooks documented below require a disposable development fixture bundle, never the installed app.
 
 The build root is derived from the checkout, with an optional `APP_ROOT` override. AppIcon and the FCPXML converter are repository-owned inputs. FCPXML style tests can override the converter via `MSM_FCPXML_CONVERTER`.
 

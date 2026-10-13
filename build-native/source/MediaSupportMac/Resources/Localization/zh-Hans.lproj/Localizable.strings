@@ -52,7 +52,7 @@
 "Cue và sửa nội dung" = "查看并编辑字幕片段";
 "Kiểu sub" = "字幕样式";
 "Chỉnh kiểu phụ đề" = "编辑字幕样式";
-"Chép lời" = "转录";
+"Chép lời" = "语音转文字";
 "Chép lời từ media" = "转录媒体";
 "Kịch bản" = "脚本";
 "Tạo phụ đề từ văn bản" = "从脚本创建字幕";
@@ -595,7 +595,7 @@
 "Quét cục bộ, không cần key. Quét kỹ hơn lấy nhiều khung hình hơn; chữ quá ngắn hoặc mờ có thể cần sửa lại." = "本地扫描，无需密钥。精细扫描会采样更多帧；短暂或模糊的文字可能需要修正。";
 "Đang quét %d%% · %d cue" = "正在扫描%d%% · %d条字幕";
 "Dừng quét" = "停止扫描";
-"Quét phụ đề" = "扫描字幕";
+"Quét phụ đề" = "识别字幕";
 "Vùng chữ cần quét" = "文字扫描区域";
 "OCR cần video có hình ảnh." = "OCR需要包含画面的视频。";
 "Không tìm thấy phụ đề trong vùng đã chọn. Hãy chọn lại vùng chữ." = "所选区域未找到字幕，请重新选择文字区域。";
@@ -644,7 +644,7 @@
 "Làm mới danh sách giọng" = "刷新音色列表";
 "Trung tính" = "中性";
 "Đang sắp xếp phụ đề…" = "正在整理字幕…";
-"Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo." = "重新排版现有字幕，并将此布局用于下次转写。";
+"1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có." = "1行保持单行。2行选择合适的换行位置，无法拆分的字幕会显示在QC中。日语保留现有排版。";
 
 "Giới thiệu" = "关于";
 "Thông tin ứng dụng và ủng hộ tác giả" = "应用信息与支持作者";
@@ -694,7 +694,7 @@
 "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng." = "获取辅助版本，查看差异并在应用前选择。";
 "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?" = "字幕已生成。是否使用其他来源核对？";
 "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh." = "如果视频有硬字幕，OCR可帮助核对文字、人名和地名。";
-"Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR." = "语音识别可帮助核对OCR中的模糊或缺失文字。";
+"Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng." = "将语音转为文字，核对识别字幕中遗漏或误识别的词语。应用前请查看差异并选择正确内容。";
 "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng." = "保留当前版本。请查看差异并选择后再应用。";
 "Không nhắc lại" = "不再提醒";
 "Chọn vùng chữ" = "选择文字区域";
@@ -745,3 +745,7 @@
 "Lồng tiếng toàn bộ" = "全部配音";
 "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "为包含选中字幕的完整段落配音，包括相邻部分。";
 "Lồng tiếng cho các phần phụ đề đã chọn." = "为选中的字幕部分配音。";
+
+"Chưa đủ 2 dòng" = "尚未分为两行";
+
+"Sửa các cue lệch số dòng" = "修复行数不符的字幕";

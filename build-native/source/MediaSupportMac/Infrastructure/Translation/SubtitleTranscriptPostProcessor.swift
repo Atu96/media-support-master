@@ -3,6 +3,22 @@ import Foundation
 /// Chuẩn hoá cue ngay sau STT. Một cue quá tải được tách thành các cue kề nhau,
 /// giữ nguyên span thời gian gốc và cùng rule với preview/SRT/FCPXML.
 enum SubtitleTranscriptPostProcessor {
+    /// Explicit two-line reflow edits only line breaks. Oversized/unsplittable
+    /// cues stay available to QC instead of merging spans or inventing timing.
+    static func wrapExistingCues(
+        _ segments: [SRTSegment], configuration: SubtitleLayoutConfiguration
+    ) -> [SRTSegment] {
+        var config = configuration.clamped()
+        config.explicitBreakPolicy = .automatic
+        var output: [SRTSegment] = []
+        for cue in segments {
+            guard !Task.isCancelled else { return segments }
+            if let layout = SubtitleLayoutEngine.layoutSingleCue(cue.text, configuration: config) {
+                output.append(SRTSegmentEditor.withText(cue, text: layout.text))
+            } else { output.append(cue) }
+        }
+        return output
+    }
     private enum ScriptFamily {
         case japanese
         case chinese
@@ -89,20 +105,20 @@ enum SubtitleTranscriptPostProcessor {
             fontSize: Double(fontSize),
             containerWidth: containerWidth,
             maxLines: style.maxLines,
+            requiresTwoLines: style.maxLines == 2,
             preferredCharactersPerLine: perLine,
             topLineRatio: style.topLineRatio.topOverBottom,
             explicitBreakPolicy: .automatic
         )
 
+        let wordIndex = SpeechWordIntervalIndex(wordTimings)
         var output: [SRTSegment] = []
         for segment in normalizedSegments {
             guard !Task.isCancelled else { return segments }
             let raw = SubtitleWrapStyle.flattenToOneLine(segment.text)
             guard !raw.isEmpty else { continue }
-            let segmentWords = wordTimings.filter {
-                $0.startSeconds >= segment.startSeconds - 0.04
-                    && $0.endSeconds <= segment.endSeconds + 0.04
-            }
+            let segmentWords = wordIndex.contained(from: segment.startSeconds - 0.04,
+                through: segment.endSeconds + 0.04)
             let allowedCueBreakOffsets = SpeechWordTimingProcessor.verifiedCueBreakOffsets(
                 in: raw,
                 using: segmentWords,

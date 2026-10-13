@@ -1,5 +1,41 @@
 import Foundation
 
+/// Reuse provider order. Ordered valid words support bounded interval lookups;
+/// malformed/unordered data retains the earlier filter and alignment fallback.
+struct SpeechWordIntervalIndex: Sendable {
+    private let words: [SpeechWordTimestamp]
+    private let ordered: Bool
+
+    init(_ words: [SpeechWordTimestamp]) {
+        self.words = words
+        var previous = -Double.infinity
+        self.ordered = words.allSatisfy { word in
+            let valid = word.startSeconds.isFinite && word.endSeconds.isFinite
+                && word.endSeconds >= word.startSeconds && word.startSeconds >= previous
+            previous = word.startSeconds
+            return valid
+        }
+    }
+
+    func contained(from start: Double, through end: Double) -> [SpeechWordTimestamp] {
+        guard ordered, start.isFinite, end.isFinite, start <= end else {
+            return words.filter { $0.startSeconds >= start && $0.endSeconds <= end }
+        }
+        func boundary(_ time: Double, after: Bool) -> Int {
+            var lower = 0, upper = words.count
+            while lower < upper {
+                let middle = lower + (upper - lower) / 2
+                if words[middle].startSeconds < time || (after && words[middle].startSeconds == time) {
+                    lower = middle + 1
+                } else { upper = middle }
+            }
+            return lower
+        }
+        return words[boundary(start, after: false)..<boundary(end, after: true)]
+            .filter { $0.endSeconds <= end }
+    }
+}
+
 /// Envelope năng lượng đã rút gọn từ lần decode waveform có sẵn. Domain chỉ
 /// đọc độ tin cậy khoảng lặng; không giữ PCM và không phụ thuộc AVFoundation.
 struct SpeechBoundaryAudioEvidence: Equatable, Sendable {

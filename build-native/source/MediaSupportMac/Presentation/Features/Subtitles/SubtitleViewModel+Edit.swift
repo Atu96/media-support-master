@@ -71,6 +71,16 @@ extension SubtitleViewModel {
             let frame = VideoPreviewFrame.classify(displaySize: displaySize)
             let width = max(Double(fontSize) * 2,
                             Double(frame.referencePixelSize.width) * Double(boxRatio) - 24)
+            if wrap.maxLines == 2,
+               SubtitleLayoutEngine.family(languageCode: language, text: snapshot.first?.text ?? "") != .japanese {
+                return SubtitleTranscriptPostProcessor.wrapExistingCues(snapshot,
+                    configuration: SubtitleLayoutConfiguration(languageCode: language,
+                        fontName: fontName, fontSize: Double(fontSize), containerWidth: width,
+                        maxLines: 2, requiresTwoLines: true,
+                        preferredCharactersPerLine: SubtitleWrapStyle.effectiveMaxCharsPerLine(
+                            base: wrap.maxCharsPerLine, fontSize: fontSize),
+                        topLineRatio: wrap.topLineRatio.topOverBottom))
+            }
             return SubtitleTranscriptPostProcessor.format(
                 snapshot, sourceLanguage: language, style: wrap,
                 fontSize: fontSize, fontName: fontName, containerWidth: width,
@@ -108,7 +118,7 @@ extension SubtitleViewModel {
             let config = SubtitleLayoutConfiguration(languageCode: language, fontName: fontName,
                 fontSize: Double(fontSize),
                 containerWidth: max(Double(fontSize) * 2, Double(frame.referencePixelSize.width) * Double(boxRatio) - 24),
-                maxLines: wrap.maxLines,
+                maxLines: wrap.maxLines, requiresTwoLines: wrap.maxLines == 2,
                 preferredCharactersPerLine: SubtitleWrapStyle.effectiveMaxCharsPerLine(base: wrap.maxCharsPerLine, fontSize: fontSize),
                 topLineRatio: wrap.topLineRatio.topOverBottom, explicitBreakPolicy: .automatic)
             let planned = SubtitleQualityRepair.repairLayout(snapshot, cueIDs: ids, configuration: config)
@@ -151,6 +161,7 @@ extension SubtitleViewModel {
             fontSize: Double(burnStyle.fontSize),
             containerWidth: subtitleLayoutContainerWidth,
             maxLines: wrapStyle.maxLines,
+            requiresTwoLines: wrapStyle.maxLines == 2,
             preferredCharactersPerLine: SubtitleWrapStyle.effectiveMaxCharsPerLine(
                 base: wrapStyle.maxCharsPerLine,
                 fontSize: burnStyle.fontSize

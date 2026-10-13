@@ -20,6 +20,7 @@ enum WaveformPeakService {
     /// `targetBins == 0` chọn mật độ phù hợp duration thật. Đủ rõ ở zoom sâu nhưng
     /// không giữ PCM và không cần decode lại mỗi khi đổi zoom.
     static func loadPeaks(url: URL, targetBins: Int = 0) async throws -> Result {
+        try Task.checkCancellation()
         let asset = AVURLAsset(url: url)
         let assetDuration = try await asset.load(.duration).seconds
         // Một số M4A AAC ghi timescale track bất thường: AVAsset duration có thể
@@ -28,25 +29,38 @@ enum WaveformPeakService {
         let duration = await Task.detached(priority: .utility) {
             canonicalAudioDuration(url: url) ?? assetDuration
         }.value
+        try Task.checkCancellation()
         guard duration.isFinite, duration > 0 else { throw CocoaError(.fileReadCorruptFile) }
 
         let requested = targetBins > 0 ? targetBins : Int((duration * 96).rounded(.up))
         let bins = min(180_000, max(12_000, requested))
         let cacheKey = cacheKey(for: url, bins: bins)
         if let cached = await WaveformPeakMemoryCache.shared.value(for: cacheKey) {
+            try Task.checkCancellation()
             return cached
         }
 
         // Waveform là tác vụ phân tích: để priority thấp hơn playback / kéo cue.
-        let result = try await Task.detached(priority: .utility) {
+        let result = try await runDecodeWorker {
             try decode(url: url, duration: duration, bins: bins)
-        }.value
+        }
+        try Task.checkCancellation()
         await WaveformPeakMemoryCache.shared.insert(
             result,
             for: cacheKey,
             assetKey: assetCacheKey(for: url)
         )
         return result
+    }
+
+    static func runDecodeWorker(_ operation: @escaping @Sendable () throws -> Result) async throws -> Result {
+        let worker = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
+            let result = try operation()
+            try Task.checkCancellation()
+            return result
+        }
+        return try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
     }
 
     /// Chỉ dùng kết quả waveform đã có. Chép lời không chờ và không decode lại
@@ -63,6 +77,7 @@ enum WaveformPeakService {
             throw CocoaError(.fileReadNoSuchFile)
         }
         let reader = try AVAssetReader(asset: asset)
+        defer { reader.cancelReading() }
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVLinearPCMBitDepthKey: 16,

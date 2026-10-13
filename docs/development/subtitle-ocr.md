@@ -1,10 +1,10 @@
 # Burned-in subtitle OCR
 
-This feature is in the current source/TEST build after 1.0.1. It requires a new build; the published 1.0.1 installer does not contain it.
+This feature is in the current source/local-build build after 1.0.1. It requires a new build; the published 1.0.1 installer does not contain it.
 
 ## User workflow
 
-1. Import a video into the main Timeline workspace. Click **Extract video subtitles** beneath the files in the left **Media & subtitles** panel, or the button with the same label and text-viewfinder icon beside **Extract subtitles from audio** in the middle toolbar. Both open the region-selection sheet for the currently imported video. The toolbar entry remains available when the import panel is hidden. Audio-only files and an active engine job disable OCR; an API key is not required.
+1. Import a video into the main Timeline workspace. Click **Scan subtitles** beneath the files in the left **Media & subtitles** panel, or the button with the same label and text-viewfinder icon beside **Transcribe** in the middle toolbar. Both open the region-selection sheet for the currently imported video. The toolbar entry remains available when the import panel is hidden. Audio-only files and an active engine job disable OCR; an API key is not required.
 2. Move the preview-frame slider to a frame containing subtitles. Drag on the displayed image to select their area; **Bottom area** restores the initial region.
 3. Automatic detection focuses on Vietnamese, English, Japanese, Korean and Chinese, using the OCR locales actually supported by the installed OS.
 4. **Scan subtitles** runs locally. **Scan more closely** increases sampling from two to four frames per second. **Stop scan** or closing the sheet cancels processing.
@@ -14,7 +14,7 @@ This extracts text visible in the picture. It does not remove that text from the
 
 ## Ownership and execution
 
-For an optional second source after OCR/audio, use the **Compare** menu or the post-completion offer. Supplementary OCR stages its result for review instead of committing to the transcript. The existing primary OCR action still creates the original transcript. See [comparison and original text priority](subtitle-comparison.md).
+After primary OCR, the optional completion offer invites audio transcription to check missing/misread words. Primary transcription does not offer OCR; the **Compare** menu still opens either source manually. Supplementary OCR stages its result for review instead of committing to the transcript. The existing primary OCR action still creates the original transcript. See [comparison and original text priority](subtitle-comparison.md).
 
 | Responsibility | Owner |
 |---|---|

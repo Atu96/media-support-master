@@ -1,13 +1,15 @@
-# Hướng dẫn Timeline — cập nhật 12/10/2026
+# Hướng dẫn Timeline — cập nhật 13/10/2026
 
-Áp dụng cho source/app TEST mới. Bản cài Release 1.0.1 đã phát hành trước đó chưa có toàn bộ thay đổi bên dưới.
+Áp dụng cho source/app chính cài cục bộ mới. Bản cài Release 1.0.1 đã phát hành trước đó chưa có toàn bộ thay đổi bên dưới.
 
 ## Ba cách tạo phụ đề
 
+**Chép lời** tự nhận diện ngôn ngữ âm thanh, độc lập với ngôn ngữ chữ do OCR/kịch bản/dự án cũ cung cấp. Chữ phụ đề trên hình có thể là bản dịch nên không dùng để ép ngôn ngữ nhận diện âm thanh. Bản sửa này có trong source/app chính cục bộ sau preview1.0.1-preview.1.
+
 | Nút trên thanh công cụ | Dùng khi | Cách hoạt động |
 |---|---|---|
-| **Lấy sub từ âm thanh** | Video/audio có lời nói | Chép lời từ âm thanh để tạo cue. Luồng nút Timeline hiện dùng Groq và cần key/mạng; đổi tên không đổi provider. |
-| **Lấy sub từ video** | Chữ phụ đề đã dính trong hình | OCR cục bộ đọc vùng chữ bạn chọn, ghép thành cue và SRT rời. Không nghe âm thanh, không cần key. |
+| **Chép lời** | Video/audio có lời nói | Chép lời từ âm thanh để tạo cue. Luồng nút Timeline hiện dùng Groq và cần key/mạng; đổi tên không đổi provider. |
+| **Quét phụ đề** | Chữ phụ đề đã dính trong hình | OCR cục bộ đọc vùng chữ bạn chọn, ghép thành cue và SRT rời. Không nghe âm thanh, không cần key. |
 | **Tạo sub từ văn bản** | Đã có kịch bản hoặc lời thoại | Nhập/dán văn bản, khớp thời gian theo lời nói trong video/audio. Nội dung văn bản là nguồn chuẩn. |
 
 Nạp video/audio trước khi dùng các nút. **Tạo sub từ văn bản** mở cửa sổ nhập kịch bản: chọn ngôn ngữ hoặc Tự động, dán nội dung hoặc **Nhập TXT**, rồi bấm **Tạo sub**. Nếu đã có bản sub gốc trong cùng dự án, app ưu tiên chữ người dùng, thử dùng lại mốc cue khi khớp đủ và giữ nguyên thời gian; không chép lời lại/không cần model. Lệch nhiều thì giữ sub hiện có và báo để kiểm tra. Khi chưa có bản gốc, luồng khớp âm thanh vẫn dùng Whisper Offline nhúng và cần model riêng đã tải/import trong Cài đặt; người dùng không cần cài Python/Homebrew/FFmpeg. Xem [công cụ tích hợp](integrated-tools.md).
@@ -17,7 +19,7 @@ Tên nút **Tạo sub từ văn bản** thay cho **Văn bản gốc** trên than
 ## Chọn vùng OCR
 
 1. Nạp video có phụ đề dính trong hình.
-2. Bấm **Lấy sub từ video** cạnh nút âm thanh, hoặc dưới danh sách tệp bên trái.
+2. Bấm **Quét phụ đề** cạnh nút âm thanh, hoặc dưới danh sách tệp bên trái.
 3. Đưa thanh khung hình tới nơi có chữ, kéo chọn vùng sát phụ đề. **Vùng phía dưới** đặt lại vùng ban đầu.
 4. Bấm **Quét phụ đề**; **Dừng quét** hoặc đóng cửa sổ sẽ hủy. Lỗi/hủy giữ phụ đề hiện có.
 5. Kết quả thành cue/SRT rời để chỉnh, dịch, lồng tiếng hoặc xuất. OCR không xóa chữ khỏi video gốc.
@@ -28,7 +30,7 @@ Chữ rõ và vùng chọn sạch là điều kiện thuận lợi. Chữ nhỏ/
 
 ## Đối chiếu OCR và âm thanh
 
-Sau khi lấy sub xong, video có lời mời lấy thêm bản bổ trợ từ nguồn còn lại. **Để sau** bỏ qua; **Không nhắc lại** lưu lựa chọn. Sau OCR, đóng cửa sổ quét mới hiện lời mời. Audio thuần không gợi ý OCR và lần chạy bổ trợ không hỏi tiếp.
+Sau **Quét phụ đề** thành công, đóng cửa sổ quét sẽ hiện lời mời **Chép lời** để đối chiếu từ thiếu hoặc nhận diện sai. Chép lời xong không gợi ý quét OCR. **Để sau** bỏ qua; **Không nhắc lại** lưu lựa chọn. Lần chạy bổ trợ không hỏi tiếp và không tự chạy nhận diện hay dùng API.
 
 Menu **Đối chiếu** trên thanh công cụ luôn cho mở lại khi đã có sub, kể cả tắt lời mời. OCR vẫn chọn vùng/quét cục bộ; âm thanh cho chọn Groq cloud (có dùng hạn mức khi bấm chạy) hoặc Whisper Offline đã tải.
 
@@ -38,9 +40,9 @@ Hai bản giữ riêng cho đến khi bấm **Áp dụng lựa chọn**. Chọn 
 
 ## Kiểm tra và sửa QC
 
-- Chọn **1 dòng**: cue có2 dòng cũng vượt giới hạn. Chọn **2 dòng**: cue2 dòng hợp lệ nếu không có lỗi khác.
+- Giữ hai nút **1 dòng / 2 dòng**. Chọn **2 dòng** sẽ tìm điểm ngắt an toàn cả với cue ngắn; cue không chia được báo **Chưa đủ 2 dòng** trong QC. Cue hiện có giữ nguyên số lượng/ID/thời gian/khoảng nghỉ; không tự gộp để đủ dòng. Nhật giữ cách bố trí đã ổn. Chọn **1 dòng**: cue có2 dòng vẫn vượt giới hạn.
 - Trong **QC**, mở menu của cue: **Xem cue**, **Sửa bố cục cue** hoặc **Sửa cue thủ công**.
-- **Sửa các cue vượt số dòng** xử lý nhóm cue vượt giới hạn hiện tại. Có **Hoàn tác/Làm lại**; sửa chạy ở nền, không gọi API.
+- **Sửa các cue lệch số dòng** xử lý nhóm cue vượt giới hạn hiện tại. Có **Hoàn tác/Làm lại**; sửa chạy ở nền, không gọi API.
 - Cue rỗng mở phần sửa chữ. Timing chồng được đưa tới Timeline để chỉnh thủ công; app không tự đoán chữ thiếu hoặc tự cắt lời.
 - Cue quá dài có thể được tách, giữ chữ và khoảng thời gian gốc. Thời điểm chia theo trọng số chữ là ước tính, cần xem lại theo video.
 - Cue giữ nguyên lời và thời gian có liên kết cache/tốc độ để giữ lồng tiếng khi đổi số thứ tự hoặc mở lại SRT. Cue bị đổi/tách có thể cần lồng tiếng lại. Nếu bố cục/cache không thể chuyển an toàn, cue được giữ để sửa thủ công.

@@ -87,8 +87,13 @@ enum MediaSupportCoreTests {
         run("Fallback layout không chẻ token provider dài", testVerifiedTokenEmergencyBoundary)
         await runAsync("Đổi bố cục chạy nền, hủy worker và chỉ nhận yêu cầu cuối", testLayoutReflowLifecycle)
         run("Reflow 9 phút đa ngôn ngữ giữ text/timing và phép đo một cue", testLongTranscriptReflow)
+        run("Index mốc từ giữ thứ tự/biên và fallback khi provider hỏng", testSpeechWordIntervalIndex)
+        await runAsync("Waveform hủy đến worker và không trả kết quả cũ", testWaveformWorkerCancellation)
+        await runAsync("QC đã hủy không đo lại cue", testQualityCancellation)
         run("Subtitle QC phát hiện tràn, tốc độ và timing nhưng không sửa cue", testSubtitleQualityAnalyzer)
         run("QC kiểm đúng một/hai dòng đang chọn", testQualityLineLimit)
+        run("Hai dòng chia cue ngắn an toàn, giữ nguyên Nhật và QC ngoại lệ", testRequiredTwoLines)
+        await runAsync("Đổi hai dòng giữ cue timing, cache DUB và Hoàn tác", testTwoLineCuePreservation)
         await runAsync("Sửa QC giữ chữ/span/ID/DUB và Hoàn tác", testQualityLayoutRepair)
         run("QC giữ cache composite và tốc độ khi mở lại SRT", testQualityDubbingReindexCache)
         run("OCR giữ chữ, blank/gap, timecode và loại jitter một mẫu", testOCRSubtitleTiming)
@@ -1083,6 +1088,67 @@ enum MediaSupportCoreTests {
         }
     }
 
+    private static func testSpeechWordIntervalIndex() throws {
+        let regular = (0..<4000).map { offset in
+            SpeechWordTimestamp(text: "w\(offset)", startSeconds: Double(offset) * 0.2,
+                endSeconds: Double(offset) * 0.2 + 0.15)
+        }
+        let duplicate = [SpeechWordTimestamp(text: "a", startSeconds: 1, endSeconds: 1.1),
+            SpeechWordTimestamp(text: "b", startSeconds: 1, endSeconds: 2),
+            SpeechWordTimestamp(text: "c", startSeconds: 1.2, endSeconds: 4)]
+        let invalid = [SpeechWordTimestamp(text: "bad", startSeconds: 2, endSeconds: 1)]
+        for words in [regular, Array(regular.prefix(10).reversed()), duplicate, invalid, []] {
+            let index = SpeechWordIntervalIndex(words)
+            for (start, end) in [(-1.0, 0.0), (1, 1.1), (1, 2), (1.2, 4), (0, 900), (4, 3)] {
+                try expect(index.contained(from: start, through: end)
+                    == words.filter { $0.startSeconds >= start && $0.endSeconds <= end },
+                    "index đổi thứ tự/biên provider hoặc chữa timing sai")
+            }
+        }
+        let index = SpeechWordIntervalIndex(regular)
+        for interval in stride(from: 0.0, to: 800, by: 1.0) {
+            try expect(index.contained(from: interval - 0.04, through: interval + 1.04)
+                == regular.filter { $0.startSeconds >= interval - 0.04 && $0.endSeconds <= interval + 1.04 },
+                "index lệch tolerance của cue")
+        }
+    }
+
+    private static func testWaveformWorkerCancellation() async throws {
+        let (started, signal) = AsyncStream<Void>.makeStream()
+        let task = Task {
+            try await WaveformPeakService.runDecodeWorker {
+                signal.yield(())
+                let deadline = Date().addingTimeInterval(2)
+                while !Task.isCancelled && Date() < deadline { Thread.sleep(forTimeInterval: 0.002) }
+                try Task.checkCancellation()
+                throw TestFailure(description: "hủy caller không đến worker waveform")
+            }
+        }
+        defer { task.cancel() }
+        var iterator = started.makeAsyncIterator()
+        _ = await iterator.next()
+        task.cancel()
+        do { _ = try await task.value; throw TestFailure(description: "waveform hủy vẫn trả kết quả") }
+        catch is CancellationError {}
+        let result = try await WaveformPeakService.runDecodeWorker {
+            WaveformPeakService.Result(peaks: [0.2], duration: 1, silenceScores: [0.8])
+        }
+        try expect(result.peaks == [0.2] && result.duration == 1, "worker mới không chạy sau khi hủy")
+    }
+
+    private static func testQualityCancellation() async throws {
+        let cues = [SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 1, text: "")]
+        let task = Task.detached {
+            Thread.sleep(forTimeInterval: 0.03)
+            return SubtitleQualityAnalyzer.analyze(cues, configuration: SubtitleLayoutConfiguration())
+        }
+        task.cancel()
+        let result = await task.value
+        try expect(result == [], "QC đã hủy vẫn phân tích/đưa cảnh báo cũ")
+        try expect(SubtitleQualityAnalyzer.analyze(cues, configuration: SubtitleLayoutConfiguration()).contains { $0.code == .emptyText },
+            "QC mới không chạy sau khi hủy")
+    }
+
     private static func testWaveformPeakService() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("msm-waveform-\(UUID().uuidString)")
@@ -1635,6 +1701,82 @@ enum MediaSupportCoreTests {
         config.maxLines = 2
         try expect(!SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooManyLines },
             "chọn hai dòng nhưng QC vẫn báo cue hai dòng")
+    }
+
+    private static func testRequiredTwoLines() throws {
+        func content(_ text: String) -> String { String(text.filter { !$0.isWhitespace }) }
+        for (language, text) in [
+            ("vi", "Xin chào mọi người, hôm nay chúng ta cùng học tiếng Anh."),
+            ("en", "Welcome to the English Podcast, we are glad you are here."),
+            ("ko", "여러분 안녕하세요, 오늘은 함께 영어를 배웁니다."),
+            ("zh", "欢迎来到我们的节目，今天我们一起学习英语。")
+        ] {
+            let config = SubtitleLayoutConfiguration(languageCode: language, fontName: "PingFang SC",
+                fontSize: 24, containerWidth: 1800, maxLines: 2, requiresTwoLines: true,
+                preferredCharactersPerLine: 80, topLineRatio: 1)
+            let layout = try require(SubtitleLayoutEngine.layoutSingleCue(text, configuration: config), "hai dòng thiếu output")
+            try expect(layout.lines.count == 2 && layout.fits, "cue vừa một hàng không chia hai dòng: \(language)")
+            try expect(content(layout.text) == content(text), "hai dòng sửa/mất chữ: \(language)")
+            try expect(SubtitleLayoutEngine.layoutSingleCue(layout.text, configuration: config) == layout,
+                "hai dòng không ổn định khi chạy lại: \(language)")
+            let cue = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 5, text: layout.text)
+            try expect(!SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooFewLines },
+                "QC báo sai cue đủ hai dòng")
+        }
+        for (language, text) in [("en", "Hello."), ("en", "F-18"), ("en", "12.5 kg"),
+                                 ("en", "👨‍👩‍👧‍👦"), ("vi", "công nghệ"), ("ko", "안녕하세요") ] {
+            var config = SubtitleLayoutConfiguration(languageCode: language, fontSize: 24,
+                containerWidth: 1800, maxLines: 2, requiresTwoLines: true, preferredCharactersPerLine: 80)
+            let result = try require(SubtitleLayoutEngine.layoutSingleCue(text, configuration: config), "cue ngoại lệ bị bỏ")
+            try expect(result.text == text && result.lines.count == 1, "hai dòng chẻ từ/model/đơn vị/grapheme: \(text)")
+            let cue = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 3, text: text)
+            let before = SRTDocument.renderSRT([cue])
+            try expect(SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooFewLines },
+                "QC bỏ sót cue không chia được")
+            try expect(SRTDocument.renderSRT([cue]) == before, "QC sửa nội dung")
+            config.maxLines = 1
+            try expect(!SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooFewLines },
+                "mode một dòng vẫn báo thiếu hai dòng")
+        }
+        for text in ["はい。", "東京で電車に乗ります。今日は京都を訪れます。", "字幕の読みやすさを確認します。数字は100.000円です。"] {
+            var config = SubtitleLayoutConfiguration(languageCode: "ja", containerWidth: 650, maxLines: 2)
+            let previous = SubtitleLayoutEngine.layoutPieces(text, configuration: config)
+            config.requiresTwoLines = true
+            try expect(SubtitleLayoutEngine.layoutPieces(text, configuration: config) == previous, "Nhật đổi layout đã ổn")
+            let cue = SRTSegment(id: 1, index: 1, timing: "", startSeconds: 0, endSeconds: 3, text: "はい。")
+            try expect(!SubtitleQualityAnalyzer.analyze([cue], configuration: config).contains { $0.code == .tooFewLines },
+                "QC ép nhánh Nhật thành hai dòng")
+        }
+    }
+
+    private static func testTwoLineCuePreservation() async throws {
+        let cue = SRTSegment(id: 42, index: 7, timing: SRTTimecode.makeTiming(start: 2, end: 6),
+            startSeconds: 2, endSeconds: 6, text: "Welcome to our podcast, we are glad you are here.")
+        let short = SRTSegment(id: 77, index: 8, timing: SRTTimecode.makeTiming(start: 6.2, end: 7.3),
+            startSeconds: 6.2, endSeconds: 7.3, text: "Hello.")
+        let config = SubtitleLayoutConfiguration(languageCode: "en", fontName: "Helvetica", fontSize: 24,
+            containerWidth: 1800, maxLines: 2, requiresTwoLines: true, preferredCharactersPerLine: 80)
+        let original = [cue, short]
+        let output = SubtitleTranscriptPostProcessor.wrapExistingCues(original, configuration: config)
+        try expect(output.count == original.count && output.map(\.id) == original.map(\.id)
+            && output.map(\.index) == original.map(\.index), "hai dòng gộp/tách/đánh số lại cue")
+        try expect(output.map(\.timing) == original.map(\.timing)
+            && output.map(\.startSeconds) == original.map(\.startSeconds)
+            && output.map(\.endSeconds) == original.map(\.endSeconds), "hai dòng đổi timing/khoảng nghỉ")
+        try expect(output[0].text.contains("\n") && output[1] == short, "hai dòng bỏ ngoại lệ hoặc không chia cue")
+        for (before, after) in zip(original, output) {
+            try expect(DubbingFingerprint.make(cue: before, localeIdentifier: "en-US", voiceIdentifier: "voice", rate: 0.5)
+                == DubbingFingerprint.make(cue: after, localeIdentifier: "en-US", voiceIdentifier: "voice", rate: 0.5),
+                "xuống dòng làm đổi cache lồng tiếng")
+        }
+        try await MainActor.run {
+            let history = SubtitleEditHistory()
+            history.record(before: original)
+            try expect(history.undo(current: output) == original && history.redo(current: original) == output, "hai dòng mất Undo/Redo")
+        }
+        let repaired = SubtitleQualityRepair.repairLayout(original, cueIDs: [42], configuration: config)
+        try expect(repaired[0].text == output[0].text && repaired[0].timing == cue.timing && repaired[1].text == short.text,
+            "QC sửa hai dòng làm đổi cue ngoài lựa chọn/timing")
     }
 
     private static func testQualityLayoutRepair() async throws {

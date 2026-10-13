@@ -14,6 +14,8 @@ final class SubtitleWhisperCreateController {
     private var progressTicker: Task<Void, Never>?
     private var lastRealPercent = 0
     private var lastRealAt = Date()
+    /// Fixture seam; normal runs use the selected engine through the session.
+    var speechRunOverride: (@MainActor (URL, String, Bool) async -> Void)?
 
     private let engineCap = 95
     private let loadPhasePercent = 93
@@ -49,6 +51,9 @@ final class SubtitleWhisperCreateController {
                 session.setMediaURL(draft)
             }
             guard let mediaURL = session.mediaURL else { return }
+            // sourceLang describes existing subtitle text (including OCR or a
+            // restored project), not the language spoken in this recording.
+            let recognitionLanguage = "auto"
 
             session.whisperComplete = false
             session.translateComplete = false
@@ -63,13 +68,15 @@ final class SubtitleWhisperCreateController {
 
             let started = Date()
             session.attachPreviewVideo()
-            if usingOffline {
+            if let scan = self.speechRunOverride {
+                await scan(mediaURL, recognitionLanguage, usingOffline)
+            } else if usingOffline {
                 await session.engine.runOfflineWhisperSRT(
                     for: mediaURL,
-                    sourceLang: session.sourceLang
+                    sourceLang: recognitionLanguage
                 )
             } else {
-                await session.engine.runWhisperSRT(for: mediaURL, sourceLang: session.sourceLang)
+                await session.engine.runWhisperSRT(for: mediaURL, sourceLang: recognitionLanguage)
                 session.presentWhisperCloudAlertIfNeeded()
             }
             session.refreshEngineStatus()
@@ -103,13 +110,20 @@ final class SubtitleWhisperCreateController {
                     session.isWhisperJobInFlight = false
                 }
                 session.activeTranscriptVariant = .original
+                var languageSample = ""
+                for cue in finish.segments {
+                    languageSample += String(cue.text.prefix(max(0, 8000 - languageSample.count)))
+                    if languageSample.count >= 8000 { break }
+                    languageSample += " "
+                }
+                session.sourceLang = MediaLanguageService.detectFromText(languageSample)?.code ?? "auto"
                 session.resetEditHistory()
                 if finish.warning == "vault" {
                     session.runner.appendLog("⚠️ Không copy SRT vào backup vault")
                 }
 
                 let elapsed = Date().timeIntervalSince(started)
-                let lang = ProjectBackupStore.languageRecord(for: mediaURL)?.language ?? "auto"
+                let lang = session.sourceLang
                 let langLabel = session.languageDisplayName(lang)
                 session.completionSummary =
                     "\(session.segments.count) đoạn • \(String(format: "%.1f", elapsed))s • \(langLabel)"

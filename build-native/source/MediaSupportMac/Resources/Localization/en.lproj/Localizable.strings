@@ -662,7 +662,7 @@
 "Làm mới danh sách giọng" = "Refresh voice list";
 "Trung tính" = "Neutral";
 "Đang sắp xếp phụ đề…" = "Arranging subtitles…";
-"Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo." = "Reformat existing subtitles and use this layout for the next transcription.";
+"1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có." = "1 line keeps a single row. 2 lines chooses a safe break; cues that cannot split appear in QC. Japanese keeps its existing layout.";
 
 "Giới thiệu" = "About";
 "Thông tin ứng dụng và ủng hộ tác giả" = "App information and support";
@@ -712,7 +712,7 @@
 "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng." = "Get an additional version, review differences, and choose before applying.";
 "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?" = "Subtitles are ready. Would you like to check another source?";
 "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh." = "If the video has burned-in subtitles, OCR can help check wording, names, and places.";
-"Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR." = "Speech recognition can help check blurry or missing text from OCR.";
+"Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng." = "Transcribe audio to check for missing or misread words in scanned subtitles. Review differences and choose before applying.";
 "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng." = "Your current version stays intact. Review differences and choose before applying.";
 "Không nhắc lại" = "Do not remind me again";
 "Chọn vùng chữ" = "Select text area";
@@ -763,3 +763,7 @@
 "Lồng tiếng toàn bộ" = "Dub all";
 "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "Dub the full paragraph containing the selected subtitles, including adjacent parts.";
 "Lồng tiếng cho các phần phụ đề đã chọn." = "Dub the selected subtitle parts.";
+
+"Chưa đủ 2 dòng" = "Not yet two lines";
+
+"Sửa các cue lệch số dòng" = "Fix cues with the wrong line count";

@@ -7,12 +7,12 @@ For **Apple silicon, macOS 15+**. The interface supports English, Vietnamese, Ja
 ## Features
 
 - **Transcription:** Groq Whisper or the downloadable Whisper Turbo Offline model, plus integrated spoken-language detection.
-- **Subtitle editing:** import SRT, edit text/timing, move, split or merge cues, and undo changes. Native font measurements and language-aware layout support one/two lines; QC highlights issues and offers explicit repair.
+- **Subtitle editing:** import SRT, edit text/timing, move, split or merge cues, and undo changes. Native font measurements and language-aware layout support one/two lines. Two-line mode finds a safe break for short cues too; unsplittable cues get QC warnings. Japanese retains its established layout. QC offers explicit repair.
 - **Local OCR:** select the burned-in subtitle area in a video. Automatic recognition focuses on Vietnamese, English, Japanese, Korean, and Chinese and produces editable cues. It does not remove text from the picture.
 - **Scripts:** paste text or import TXT and align it to speech. Sufficiently matched existing original cues can supply timing without another transcription.
 - **Translation and summaries:** Apple local, Groq, or Gemini integrations, subject to device/language/model availability.
 - **AI dubbing:** Google Cloud Text-to-Speech, ElevenLabs, Maziao, or Apple speech, with voice selection, duration adjustment, and local cache management. Provider catalogs may include account-accessible custom/cloned voices; this app does not create voice clones.
-- **Cross-checking:** compare OCR and audio-derived subtitles and choose results before applying changes.
+- **Cross-checking:** after OCR, optionally transcribe audio to check missing/misread words; review differences and choose before applying. Transcription does not prompt for OCR. Both sources remain available in the Compare menu.
 - **Media preview/export:** video, waveform, subtitle styling/position, and SRT, plain-text TXT, FCPXML, or video with subtitles and dubbed audio.
 
 Maziao's **Connected paragraphs** mode groups nearby cues into editable DUB blocks while keeping SUB cues unchanged. It fits the whole paragraph span; internal speech may not match each subtitle boundary. **Each cue** retains the earlier method. Cloud dubbing includes bounded concurrency, cached speech reuse, and recovery of known Maziao tasks. See [dubbing behavior and limits](docs/development/dubbing.md).
@@ -27,6 +27,8 @@ Review recognition, translation, timing, and voices, especially names, unclear r
 |---|---|---|
 | Current preview | [1.0.1-preview.1, arm64](https://github.com/Atu96/media-support-master/releases/tag/v1.0.1-preview.1) | Current OCR, comparison, QC, script-priority, paragraph-dubbing, and toolbar workflows. |
 | Earlier stable | [1.0.1, arm64](https://github.com/Atu96/media-support-master/releases/tag/v1.0.1) | Integrated Japanese tools; predates the newer source/preview features above. |
+
+The shorter **Transcribe / Scan subtitles** labels, OCR-only completion offer, and two-line/QC behavior are source/local-build updates newer than 1.0.1-preview.1.
 
 Release pages provide notes and SHA-256 checksum files. [All releases](https://github.com/Atu96/media-support-master/releases) include older installers; 1.0.0 predates bundled Japanese alignment and retains a legacy Japanese dependency.
 
@@ -50,7 +52,7 @@ Settings offers signed **tool updates** for managed helpers/templates. These do 
 ## Quick start
 
 1. Import video/audio or SRT.
-2. Choose **Extract subtitles from audio**, **Extract video subtitles** (select the OCR area), or **Create subtitles from text**.
+2. Choose **Transcribe**, **Scan subtitles** (select the OCR area), or **Create subtitles from text**.
 3. Review/edit, choose one/two lines, and use QC or optional comparison.
 4. Translate, summarize, or dub. **Dub this part** appears with SUB selection; Maziao paragraph mode includes adjacent cues in that paragraph. **Dub all** processes the transcript.
 5. Use **Export → SRT / TXT / XML** or title-bar settings for video export. TXT omits timestamps; SRT/FCPXML retain timing.
@@ -62,12 +64,10 @@ Guides: [Timeline (Vietnamese)](docs/development/timeline-workflows.md), [OCR](d
 Install Apple developer command-line tools with a macOS SDK containing `FoundationModels`, plus Python 3 for build/QA scripts. The tested build uses a macOS 26 SDK. From a checkout:
 
 ```sh
-./build-native/test.command
-./build-native/export-test-app.command
-open ./dist/test/Media_Support_Master_TEST.app
+./build-native/install-applications.command
 ```
 
-Scripts locate the checkout; `APP_ROOT` can override it. Initial assembly may download and checksum-verify the pinned Japanese helper from GitHub Releases. Artifacts/TEST bundles are Git-ignored; offline QA does not call provider APIs or read their credentials.
+Scripts locate the checkout; `APP_ROOT` can override it. Initial assembly may download and checksum-verify the pinned Japanese helper from GitHub Releases. The installer runs offline QA, builds a self-contained app, validates a disposable fixture copy, and installs/opens **/Applications/Media Support Master.app**. Build artifacts are Git-ignored; QA does not call provider APIs or read credentials. It preserves preferences, credentials, model downloads, and project data. The former TEST build commands now delegate to this main-app installer.
 
 With macOS 27 SDK selected, the build prefers an installed macOS 26 SDK for tested SwiftUI behavior. `MSM_MACOS_SDK_PATH` overrides SDK selection; standalone tools lacking the SwiftUI macro plugin are insufficient for a macOS 27 SDK build.
 

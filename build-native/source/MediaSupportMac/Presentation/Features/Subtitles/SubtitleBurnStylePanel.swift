@@ -130,7 +130,7 @@ struct SubtitleBurnStylePanel: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 142)
-                    .help(L10n.string("Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo."))
+                    .help(L10n.string("1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có."))
                 }
                 if isApplyingLayout {
                     HStack(spacing: 6) {

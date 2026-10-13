@@ -74,6 +74,7 @@ enum SubtitleQualityIssueCode: String, Equatable, Sendable {
     case emptyText
     case lineOverflow
     case tooManyLines
+    case tooFewLines
     case tooFast
     case tooShort
     case tooLong
@@ -96,12 +97,14 @@ enum SubtitleQualityAnalyzer {
         _ segments: [SRTSegment],
         configuration: SubtitleLayoutConfiguration
     ) -> [SubtitleQualityIssue] {
+        guard !Task.isCancelled else { return [] }
         let ordered = segments.sorted {
             $0.startSeconds == $1.startSeconds ? $0.index < $1.index : $0.startSeconds < $1.startSeconds
         }
         var issues: [SubtitleQualityIssue] = []
 
         for (offset, cue) in ordered.enumerated() {
+            guard !Task.isCancelled else { return [] }
             let text = cue.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else {
                 issues.append(issue(cue, .emptyText, .error, "Cue không có nội dung"))
@@ -112,6 +115,11 @@ enum SubtitleQualityAnalyzer {
             let hardLines = text.components(separatedBy: "\n")
             if hardLines.count > clampedConfiguration.maxLines {
                 issues.append(issue(cue, .tooManyLines, .error, "Vượt \(clampedConfiguration.maxLines) dòng"))
+            }
+            if clampedConfiguration.requiresTwoLines, clampedConfiguration.maxLines == 2,
+               hardLines.filter({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }).count < 2,
+               SubtitleLayoutEngine.family(languageCode: configuration.languageCode, text: text) != .japanese {
+                issues.append(issue(cue, .tooFewLines, .warning, "Chưa đủ 2 dòng"))
             }
             if hardLines.contains(where: {
                 SubtitleLayoutEngine.measuredWidth(

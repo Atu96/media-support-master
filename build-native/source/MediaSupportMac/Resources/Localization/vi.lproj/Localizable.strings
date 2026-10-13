@@ -662,7 +662,7 @@
 "Làm mới danh sách giọng" = "Làm mới danh sách giọng";
 "Trung tính" = "Trung tính";
 "Đang sắp xếp phụ đề…" = "Đang sắp xếp phụ đề…";
-"Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo." = "Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo.";
+"1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có." = "1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có.";
 
 "Giới thiệu" = "Giới thiệu";
 "Thông tin ứng dụng và ủng hộ tác giả" = "Thông tin ứng dụng và ủng hộ tác giả";
@@ -712,7 +712,7 @@
 "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng." = "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng.";
 "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?" = "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?";
 "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh." = "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh.";
-"Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR." = "Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR.";
+"Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng." = "Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng.";
 "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng." = "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng.";
 "Không nhắc lại" = "Không nhắc lại";
 "Chọn vùng chữ" = "Chọn vùng chữ";
@@ -763,3 +763,7 @@
 "Lồng tiếng toàn bộ" = "Lồng tiếng toàn bộ";
 "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề.";
 "Lồng tiếng cho các phần phụ đề đã chọn." = "Lồng tiếng cho các phần phụ đề đã chọn.";
+
+"Chưa đủ 2 dòng" = "Chưa đủ 2 dòng";
+
+"Sửa các cue lệch số dòng" = "Sửa các cue lệch số dòng";

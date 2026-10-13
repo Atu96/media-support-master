@@ -35,6 +35,9 @@ struct SubtitleLayoutConfiguration: Equatable, Sendable {
     /// Bề rộng nội dung text thật, đã trừ padding hộp sub, tại canvas tham chiếu.
     var containerWidth: Double
     var maxLines: Int
+    /// App's two-line mode requests two safe lines, including short cues.
+    /// Japanese retains its established layout; unsplittable cues stay intact for QC.
+    var requiresTwoLines: Bool
     /// Giá trị legacy/UI cũ. Chỉ tạo độ rộng đọc thoải mái; không còn là dao cắt cứng.
     var preferredCharactersPerLine: Int
     /// Dòng trên / dòng dưới. 0.5 = dạng bottom-heavy 1:2; 1 = cân bằng.
@@ -47,6 +50,7 @@ struct SubtitleLayoutConfiguration: Equatable, Sendable {
         fontSize: Double = 54,
         containerWidth: Double = 1_720,
         maxLines: Int = 2,
+        requiresTwoLines: Bool = false,
         preferredCharactersPerLine: Int = 33,
         topLineRatio: Double = 0.5,
         explicitBreakPolicy: SubtitleExplicitBreakPolicy = .automatic
@@ -56,6 +60,7 @@ struct SubtitleLayoutConfiguration: Equatable, Sendable {
         self.fontSize = fontSize
         self.containerWidth = containerWidth
         self.maxLines = maxLines
+        self.requiresTwoLines = requiresTwoLines
         self.preferredCharactersPerLine = preferredCharactersPerLine
         self.topLineRatio = topLineRatio
         self.explicitBreakPolicy = explicitBreakPolicy
@@ -393,6 +398,15 @@ enum SubtitleLayoutEngine {
     ) -> SubtitleLayoutResult? {
         let fullWidth = measurer.width(of: text)
         if fullWidth <= lineWidth + 0.5 {
+            if configuration.requiresTwoLines, configuration.maxLines == 2, family != .japanese,
+               let split = bestLineBreak(text, configuration: configuration, family: family,
+                    lineWidth: lineWidth, measurer: measurer, textStart: textStart) {
+                let chars = Array(text)
+                let lines = [String(chars[..<split]), String(chars[split...])]
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                return SubtitleLayoutResult(text: lines.joined(separator: "\n"), lines: lines,
+                    lineWidths: lines.map { measurer.width(of: $0) }, issues: [])
+            }
             return SubtitleLayoutResult(text: text, lines: [text], lineWidths: [fullWidth], issues: [])
         }
         guard configuration.maxLines >= 2,
@@ -434,14 +448,20 @@ enum SubtitleLayoutEngine {
         let candidates = breakCandidates(text, family: family, languageCode: configuration.languageCode,
             width: lineWidth, configuration: configuration, measurer: measurer, textStart: textStart)
         let targetFraction = configuration.topLineRatio / (1 + configuration.topLineRatio)
+        let requiresSafeShortBreak = configuration.requiresTwoLines && family != .japanese
+            && measurer.width(of: text) <= lineWidth + 0.5
         var best: (score: Double, offset: Int)?
 
         for candidate in candidates where candidate.offset > 0 && candidate.offset < chars.count {
             guard !Task.isCancelled else { return nil }
             guard isLegalBreak(chars, at: candidate.offset) else { continue }
+            if requiresSafeShortBreak, !candidate.isLexicalBoundary,
+               candidate.strength.rawValue < BreakStrength.softPunctuation.rawValue { continue }
             let left = String(chars[..<candidate.offset]).trimmingCharacters(in: .whitespacesAndNewlines)
             let right = String(chars[candidate.offset...]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !left.isEmpty, !right.isEmpty else { continue }
+            if configuration.requiresTwoLines, family != .japanese,
+               isProtectedSemanticBreak(left: left, right: right, languageCode: configuration.languageCode) { continue }
             let leftWidth = measurer.width(of: left)
             let rightWidth = measurer.width(of: right)
             guard leftWidth <= lineWidth + 0.5, rightWidth <= lineWidth + 0.5 else { continue }

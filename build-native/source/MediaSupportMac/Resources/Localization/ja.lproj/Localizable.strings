@@ -595,7 +595,7 @@
 "Quét cục bộ, không cần key. Quét kỹ hơn lấy nhiều khung hình hơn; chữ quá ngắn hoặc mờ có thể cần sửa lại." = "キー不要でローカル処理します。詳細スキャンではフレーム数が増えます。短時間や不鮮明な文字は修正が必要な場合があります。";
 "Đang quét %d%% · %d cue" = "スキャン中 %d%% · 字幕%d件";
 "Dừng quét" = "スキャンを停止";
-"Quét phụ đề" = "字幕をスキャン";
+"Quét phụ đề" = "字幕を読み取る";
 "Vùng chữ cần quét" = "文字のスキャン範囲";
 "OCR cần video có hình ảnh." = "OCRには映像のある動画が必要です。";
 "Không tìm thấy phụ đề trong vùng đã chọn. Hãy chọn lại vùng chữ." = "選択範囲に字幕が見つかりません。文字の範囲を選び直してください。";
@@ -644,7 +644,7 @@
 "Làm mới danh sách giọng" = "音声リストを更新";
 "Trung tính" = "中性";
 "Đang sắp xếp phụ đề…" = "字幕を整えています…";
-"Đổi bố cục phụ đề hiện có và áp dụng cho lần chép lời tiếp theo." = "既存の字幕を整え、次回の文字起こしにもこのレイアウトを使用します。";
+"1 dòng giữ một hàng. 2 dòng chọn điểm ngắt an toàn; cue không chia được sẽ hiện QC. Tiếng Nhật giữ cách bố trí hiện có." = "1行は1行にまとめます。2行は安全な位置で改行し、分割できない字幕はQCに表示します。日本語の配置は従来どおりです。";
 
 "Giới thiệu" = "このアプリについて";
 "Thông tin ứng dụng và ủng hộ tác giả" = "アプリ情報と作者の支援";
@@ -694,7 +694,7 @@
 "Lấy bản bổ trợ, xem khác biệt và chọn trước khi áp dụng." = "補助版を作成し、違いを確認して適用前に選択します。";
 "Đã lấy phụ đề. Bạn muốn kiểm tra thêm bằng nguồn khác?" = "字幕を作成しました。別のソースでも確認しますか？";
 "Nếu video có phụ đề dính trong hình, quét OCR có thể giúp đối chiếu chữ, tên riêng và địa danh." = "映像に字幕が焼き込まれている場合、OCRで文字や人名、地名を確認できます。";
-"Nhận diện lời nói có thể giúp đối chiếu những đoạn chữ mờ hoặc bị thiếu khi quét OCR." = "音声認識でOCRの不鮮明な文字や欠落部分を確認できます。";
+"Chép lời từ âm thanh để đối chiếu từ bị thiếu hoặc nhận diện sai khi quét phụ đề. Bạn xem khác biệt và chọn trước khi áp dụng." = "音声を文字起こしして、読み取った字幕の欠落や誤認識を確認できます。適用前に違いを確認し、正しい内容を選んでください。";
 "Bản hiện có được giữ nguyên. Bạn xem khác biệt và chọn trước khi áp dụng." = "現在の版は保持されます。違いを確認してから適用内容を選択してください。";
 "Không nhắc lại" = "今後表示しない";
 "Chọn vùng chữ" = "文字領域を選択";
@@ -745,3 +745,7 @@
 "Lồng tiếng toàn bộ" = "すべて吹き替え";
 "Lồng tiếng cả đoạn chứa phần phụ đề đã chọn, gồm các phần liền kề." = "選択した字幕を含む段落全体を、隣接部分も含めて吹き替えます。";
 "Lồng tiếng cho các phần phụ đề đã chọn." = "選択した字幕部分を吹き替えます。";
+
+"Chưa đủ 2 dòng" = "2行になっていません";
+
+"Sửa các cue lệch số dòng" = "行数が合わない字幕を修正";
